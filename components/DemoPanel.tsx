@@ -5,6 +5,7 @@ import { simulatePlatformResponses } from "@/lib/demo";
 import { getCase, resetDemo, startBlankCase, updateCase } from "@/lib/useCase";
 import { fastForward } from "@/lib/demo";
 import { recheckNow } from "@/lib/recheckClient";
+import { setPreferCached, useAiStatus } from "@/lib/aiStatus";
 import { Icon } from "./Icon";
 
 function isTyping(el: EventTarget | null) {
@@ -79,9 +80,34 @@ export function DemoPanel() {
       >
         <Icon name="trash" size={16} /> Reset demo
       </button>
-      <p className="px-2 pt-2 text-[11px] leading-relaxed text-panel-muted">
+      <AiIndicator />
+      <p className="break-all px-2 pt-2 text-[11px] leading-relaxed text-panel-muted">
         Shift+D to hide · Recovery URLs: <span className="font-mono">/demo?preset=fresh|sent|simulated|escalation|fastforward</span>
       </p>
+    </div>
+  );
+}
+
+/** Live vs cached Gemini — visible only here, never to judges on the main screen. */
+function AiIndicator() {
+  const { events, preferCached } = useAiStatus();
+  const tone = { live: "bg-[#6FC39D]", cached: "bg-[#E7C46F]", template: "bg-panel-muted" } as const;
+  return (
+    <div className="mt-2 border-t border-panel-line px-2 pt-2">
+      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs">
+        <span>Use cached Gemini responses</span>
+        <input type="checkbox" checked={preferCached} onChange={(e) => setPreferCached(e.target.checked)} className="accent-[#3446A8]" />
+      </label>
+      <ul className="mt-2 space-y-1">
+        {events.length === 0 && <li className="text-[11px] text-panel-muted">No Gemini calls yet.</li>}
+        {events.map((e) => (
+          <li key={e.at + e.step} className="flex items-center gap-2 text-[11px]">
+            <span className={`h-1.5 w-1.5 rounded-full ${tone[e.source]}`} />
+            <span className="flex-1 truncate">{e.step}</span>
+            <span className="font-mono uppercase text-panel-muted">{e.source}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

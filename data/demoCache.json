@@ -1,0 +1,105 @@
+{
+  "note": "Recorded live Gemini output for the fictional demo case. Used only in DEMO_MODE, when Gemini is slow or unreachable, or when the presenter picks cached responses.",
+  "recordedAt": "2026-09-25T20:35:51.475Z",
+  "openings": {
+    "reddit": "Hello Reddit Trust & Safety Team,\nI am writing to request the immediate removal of private imagery of me that has been posted to your platform without my consent.",
+    "x": "Hello X Safety Team,\nI am writing to urgently ask that you remove private imagery of me that has been posted to your platform without my consent.",
+    "imgvault": "Hello ImgVault Removals Team,\nI am writing to request the prompt removal of private imagery of me that has been uploaded to your platform without my consent.",
+    "google-search": "Hello Google Removals Team,\nI am writing to request the prompt removal of search results for my name that link to private intimate imagery shared without my consent.",
+    "instagram": "Hello Instagram Trust & Safety Team,\nI am writing to urgently request the removal of private imagery of me that has been shared on your platform without my consent."
+  },
+  "detections": {
+    "Cq7Lx2aPq1": {
+      "postId": "Cq7Lx2aPq1",
+      "url": "https://www.instagram.com/p/Cq7Lx2aPq1/",
+      "level": "likely",
+      "signals": [
+        "Names or tags you (“Jordan Ellis”)."
+      ],
+      "explanation": "The post caption tags @jordan.ellis and a comment explicitly names Jordan Ellis.",
+      "source": "gemini"
+    },
+    "Cq6Tn8bWe4": {
+      "postId": "Cq6Tn8bWe4",
+      "url": "https://www.instagram.com/p/Cq6Tn8bWe4/",
+      "level": "unrelated",
+      "signals": [],
+      "explanation": "The post caption and comments do not mention her name, initials, or link to any reported content.",
+      "source": "gemini"
+    },
+    "Cq5Rz1cHy7": {
+      "postId": "Cq5Rz1cHy7",
+      "url": "https://www.instagram.com/p/Cq5Rz1cHy7/",
+      "level": "likely",
+      "signals": [
+        "Says it’s re-posting content another platform removed."
+      ],
+      "explanation": "The caption states it is reposting content taken down by Reddit, and a comment references r/exampleforum where she previously reported content.",
+      "source": "gemini"
+    },
+    "Cq4Kp6dMm2": {
+      "postId": "Cq4Kp6dMm2",
+      "url": "https://www.instagram.com/p/Cq4Kp6dMm2/",
+      "level": "unrelated",
+      "signals": [],
+      "explanation": "The caption and comment contain only gym-related text with no mention of Jordan Ellis or links to her reported content.",
+      "source": "gemini"
+    },
+    "Cq3Jb9eQs5": {
+      "postId": "Cq3Jb9eQs5",
+      "url": "https://www.instagram.com/p/Cq3Jb9eQs5/",
+      "level": "likely",
+      "signals": [
+        "Links to content you already reported."
+      ],
+      "explanation": "A comment contains a direct link to content she has already reported.",
+      "source": "gemini"
+    },
+    "Cq2Hd4fVt8": {
+      "postId": "Cq2Hd4fVt8",
+      "url": "https://www.instagram.com/p/Cq2Hd4fVt8/",
+      "level": "unrelated",
+      "signals": [],
+      "explanation": "The text only mentions ramen and foodie hashtags, with no connection to Jordan Ellis or her reported content.",
+      "source": "gemini"
+    },
+    "Cq1Gw7gXr3": {
+      "postId": "Cq1Gw7gXr3",
+      "url": "https://www.instagram.com/p/Cq1Gw7gXr3/",
+      "level": "possible",
+      "signals": [
+        "Uses your initials (J.E.)."
+      ],
+      "explanation": "The caption contains the initials \"J.E.\", which match Jordan Ellis's initials.",
+      "source": "gemini"
+    },
+    "Cq0Fs2hZn6": {
+      "postId": "Cq0Fs2hZn6",
+      "url": "https://www.instagram.com/p/Cq0Fs2hZn6/",
+      "level": "possible",
+      "signals": [
+        "Mentions “Jordan”."
+      ],
+      "explanation": "A comment asks \"wait is that jordan from lincoln high??\", matching her first name in an inquiry format.",
+      "source": "gemini"
+    },
+    "Cp9Eq5iLk9": {
+      "postId": "Cp9Eq5iLk9",
+      "url": "https://www.instagram.com/p/Cp9Eq5iLk9/",
+      "level": "unrelated",
+      "signals": [],
+      "explanation": "The caption and comments contain only generic meme text and do not mention or link to Jordan Ellis.",
+      "source": "gemini"
+    }
+  },
+  "ftcSummary": {
+    "X": "I submitted a removal request to X for one link under the US TAKE IT DOWN Act. Although I sent two reminders, the platform failed to comply within 48 hours. The deadline has passed and X has not taken action or rejected my request."
+  },
+  "reminders": {
+    "X:24": "I am following up on my removal request submitted under the TAKE IT DOWN Act and ask that X remove the reported material within 48 hours.",
+    "X:44": "I am following up on my pending removal request to remind X that the reported material must be removed within 48 hours.",
+    "Google Search:24": "I am following up on my removal request and ask that Google Search complete the removal within 48 hours.",
+    "ImgVault:24": "I am following up on my removal request under the TAKE IT DOWN Act and ask that you remove the reported content within 48 hours of my notice.",
+    "Instagram:24": "I am following up on my removal request under the TAKE IT DOWN Act to remind Instagram of the obligation to remove the reported content within 48 hours."
+  }
+}

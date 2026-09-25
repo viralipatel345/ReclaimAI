@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import { chase, polishReminder, timelineFacts } from "./escalation";
 import { getCase, setCase, updateCase } from "./useCase";
+import { postJson } from "./api";
 import type { Case } from "./types";
 
 const polished = new Set<string>();
@@ -25,16 +26,9 @@ export function useChase(c: Case | null | undefined, now: number, demo: boolean)
       const r = c.requests.find((x) => x.id === m.requestId);
       if (!r?.sentAt) continue;
       polished.add(m.id);
-      fetch("/api/followup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "reminder", facts: timelineFacts(c, r, Date.now(), m.hourMark) }),
-      })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((out: { text: string; source: string } | null) => {
-          if (out?.source === "gemini" && out.text) updateCase((x) => polishReminder(x, m.id, out.text));
-        })
-        .catch(() => {});
+      postJson<{ text: string; source: string }>("/api/followup", { kind: "reminder", facts: timelineFacts(c, r, Date.now(), m.hourMark) }).then((out) => {
+        if (out?.text && out.source !== "template") updateCase((x) => polishReminder(x, m.id, out.text));
+      });
     }
   }, [c]);
 }

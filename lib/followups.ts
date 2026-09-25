@@ -21,13 +21,14 @@ type Drafter = (kind: "reminder" | "ftc", facts: TimelineFacts) => Promise<strin
 
 const FOLLOWUP_PROMPT = `You help a survivor of non-consensual intimate imagery follow up on removal requests they sent under the US TAKE IT DOWN Act.
 Write in the first person ("I"). Be factual, calm and firm. Use only the facts provided; never invent dates, events, names or laws.
-Never describe the content, never include names, emails or URLs, never threaten, no markdown.`;
+Never describe the content, never include names, emails or URLs, never threaten, no markdown.
+Don't state specific dates or times — the complaint's timeline lists them. Say "within 48 hours" or "the deadline has passed" instead.`;
 
 const defaultDrafter: Drafter = async (kind, facts) => {
   const tool = kind === "reminder" ? "draft_reminder" : "draft_ftc_complaint";
   const ask =
     kind === "reminder"
-      ? `Write one sentence for the ${facts.hourMark}-hour reminder. The deadline is ${facts.deadlineAt}.`
+      ? `Write one sentence for the ${facts.hourMark}-hour reminder (${(facts.hourMark ?? 24) >= 44 ? "the deadline is only hours away" : "about a day remains"}).`
       : `Write the summary paragraph for my FTC complaint about ${facts.platformName}. Name the platform.`;
   const run = await runAgent<{ text?: string; summary?: string }>({
     model: kind === "reminder" ? MODELS.fast : MODELS.primary,
@@ -40,7 +41,7 @@ const defaultDrafter: Drafter = async (kind, facts) => {
   return String(run.output.text ?? run.output.summary ?? "");
 };
 
-export async function draftFollowUpText(kind: "reminder" | "ftc", facts: TimelineFacts, drafter: Drafter = defaultDrafter): Promise<{ text: string; source: "gemini" | "template" }> {
+export async function draftFollowUpText(kind: "reminder" | "ftc", facts: TimelineFacts, drafter: Drafter = defaultDrafter): Promise<{ text: string; source: "gemini" | "cached" | "template" }> {
   try {
     const text = (await drafter(kind, facts)).replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim();
     if (text.length >= 12) return { text: text.slice(0, kind === "reminder" ? 240 : 700), source: "gemini" };
@@ -51,27 +52,14 @@ export async function draftFollowUpText(kind: "reminder" | "ftc", facts: Timelin
 }
 
 // ---------- parse_reply ----------
+import { classifyReplyByRules } from "./replyRules";
+export { classifyReplyByRules };
 
 export interface ParsedReply {
   status: ReplyStatus;
   summary: string;
   asksForImages: boolean;
   source: "gemini" | "rules";
-}
-
-const IMAGE_REQUEST = /\b(send|upload|attach|provide|share)\b[^.]{0,60}\b(image|images|photo|photos|picture|pictures|video|videos|screenshot|screenshots|copy of the (?:image|photo|video))\b/i;
-
-/** Keyword fallback when Gemini is unavailable. Order matters: rejections often mention "removed". */
-export function classifyReplyByRules(text: string): Omit<ParsedReply, "source"> {
-  const t = text.toLowerCase();
-  const asksForImages = IMAGE_REQUEST.test(text);
-  if (/(does not|doesn't|did not|didn't) (violate|go against)|not (in )?violation|(unable|not able) to (take action|remove)|we (won't|will not|cannot|can't) remove|declin(e|ed) to|no action (will be|was) taken/.test(t))
-    return { status: "rejected", summary: "The platform says it won't remove the content.", asksForImages };
-  if (/(has|have) (been )?(removed|taken down|disabled)|was (removed|taken down|disabled)|we (removed|took down|disabled)|no longer (available|accessible)/.test(t))
-    return { status: "removed", summary: "The platform says the content was removed.", asksForImages };
-  if (/(received|we('re| are) (reviewing|looking)|under review|ticket|case (number|id|#)|thank you for (your )?report|will (review|get back))/.test(t))
-    return { status: "acknowledged", summary: "The platform confirmed it received the request and is reviewing it.", asksForImages };
-  return { status: "unclear", summary: "The reply doesn't clearly say what the platform decided.", asksForImages };
 }
 
 type Classifier = (text: string, platformName: string) => Promise<{ status?: string; summary?: string; asksForImages?: boolean }>;

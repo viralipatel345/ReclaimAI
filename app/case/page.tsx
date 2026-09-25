@@ -10,7 +10,9 @@ import { nameSearchUrl, normalizeUrl } from "@/lib/platforms";
 import { ATTESTATION_TEXT } from "@/lib/templates";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useResolveLinks } from "@/lib/useResolve";
-import type { OpeningsResult, OpeningTarget } from "@/lib/draft";
+import type { OpeningTarget } from "@/lib/draft";
+import { fetchOpenings } from "@/lib/openingsClient";
+import { useDemoMode } from "@/components/Providers";
 import type { Case } from "@/lib/types";
 
 export default function TellUsWhere() {
@@ -31,6 +33,7 @@ function CaseForm({ c }: { c: Case }) {
   const [linkInput, setLinkInput] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const demo = useDemoMode();
   const checking = useResolveLinks(c);
   const [attested, setAttested] = useState(!!c.attestation.signedAt);
   const signature = c.attestation.signature;
@@ -61,13 +64,7 @@ function CaseForm({ c }: { c: Case }) {
       kind: r.kind,
     }));
     setDrafting(true);
-    let openings: Record<string, string> = {};
-    try {
-      const res = await fetch("/api/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets }) });
-      if (res.ok) openings = ((await res.json()) as OpeningsResult).openings;
-    } catch {
-      // Template openings are used if Gemini is unreachable.
-    }
+    const { openings } = await fetchOpenings(targets, demo);
     updateCase((x) => {
       const next = { ...x, attestation: signed.attestation };
       const requests = draftRequests(next, at, openings).map((r) => ({ ...r, openingSource: openings[r.platformId] ? ("gemini" as const) : ("template" as const) }));
