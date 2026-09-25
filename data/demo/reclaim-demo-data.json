@@ -10,6 +10,12 @@
     "removedAfterCheck": [
       "'96% of deepfakes are non-consensual': the 2019 Deeptrace report says 96% were pornographic, not non-consensual. Replaced by the 2023 98% figure.",
       "'300,000+ images removed, 90%+ removal rate' for StopNCII: not found at source. Replaced by SWGfL's published 434,000+ hashes."
+    ],
+    "linksCheckedOn": "2026-09-25",
+    "appTargetsNeedingFix": [
+      "data/platforms.json 'instagram' target https://help.instagram.com/contact/ shows 'page isn't available'",
+      "data/platforms.json 'facebook' target https://www.facebook.com/help/contact/ is 'Page not found'",
+      "data/platforms.json 'tumblr' target https://www.tumblr.com/abuse redirects to general guidelines"
     ]
   },
   "law": {
@@ -82,17 +88,20 @@
       "name": "CCRI Image Abuse Helpline",
       "detail": "Free, 24/7",
       "phone": "1-844-878-2274",
-      "url": "https://cybercivilrights.org/ccri-safety-center/"
+      "url": "https://cybercivilrights.org/ccri-safety-center/",
+      "check": "Opened in a browser on 2026-09-25."
     },
     {
       "name": "StopNCII",
       "detail": "On-device fingerprinting to block re-uploads on partner platforms",
-      "url": "https://stopncii.org/"
+      "url": "https://stopncii.org/",
+      "check": "Opened in a browser on 2026-09-25."
     },
     {
       "name": "NCMEC Take It Down",
       "detail": "For images taken when the person was under 18",
-      "url": "https://takeitdown.ncmec.org/"
+      "url": "https://takeitdown.ncmec.org/",
+      "check": "Opened in a browser on 2026-09-25."
     }
   ],
   "platforms": [
@@ -103,8 +112,9 @@
       "target": "https://www.reddit.com/report",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Report form loads. Policy page confirmed in browser (blocks automated checks)."
+      "check": "Returns the report page to a normal browser request. This test browser cannot open reddit.com.",
+      "link": "https://www.reddit.com/report",
+      "linkType": "form"
     },
     {
       "id": "x",
@@ -113,8 +123,9 @@
       "target": "https://help.x.com/en/forms/safety-and-sensitive-content",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Policy page confirmed in browser. Report form opens in Chrome, Safari, Firefox; not in some embedded browsers."
+      "check": "Policy page with reporting steps, opened in a browser. X's direct form refused to load in the test browser, so it is not linked.",
+      "link": "https://help.x.com/en/rules-and-policies/intimate-media",
+      "linkType": "help page"
     },
     {
       "id": "instagram",
@@ -123,8 +134,9 @@
       "target": "https://help.instagram.com/contact/",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Loads."
+      "check": "Opened in a browser. The old help.instagram.com/contact/ link showed \"page isn't available\".",
+      "link": "https://help.instagram.com/1769410010008691",
+      "linkType": "help page"
     },
     {
       "id": "facebook",
@@ -133,8 +145,9 @@
       "target": "https://www.facebook.com/help/contact/",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Loads."
+      "check": "Meta's NCII reporting page for its platforms, title confirmed in a browser. The old facebook.com/help/contact/ link was \"Page not found\".",
+      "link": "https://www.meta.com/help/policies/1437976901029950/",
+      "linkType": "help page"
     },
     {
       "id": "tiktok",
@@ -143,8 +156,9 @@
       "target": "https://www.tiktok.com/legal/report/feedback",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Loads."
+      "check": "Opened in a browser. Report form with topic picker.",
+      "link": "https://www.tiktok.com/legal/report/feedback",
+      "linkType": "form"
     },
     {
       "id": "youtube",
@@ -153,8 +167,9 @@
       "target": "https://support.google.com/youtube/answer/142443",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Loads."
+      "check": "Opened in a browser. Privacy Complaint Process.",
+      "link": "https://support.google.com/youtube/answer/142443",
+      "linkType": "help page"
     },
     {
       "id": "discord",
@@ -163,8 +178,9 @@
       "target": "https://dis.gd/request",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Form requires signing in to Discord Support first."
+      "check": "Opened in a browser. Needs a Discord Support sign-in first.",
+      "link": "https://dis.gd/request",
+      "linkType": "form"
     },
     {
       "id": "telegram",
@@ -173,8 +189,9 @@
       "target": "abuse@telegram.org",
       "coveredByAct": true,
       "fictional": false,
-      "check": "email",
-      "note": "Email channel, not link-checked."
+      "check": "Address confirmed on Telegram's FAQ.",
+      "link": "mailto:abuse@telegram.org",
+      "linkType": "email"
     },
     {
       "id": "tumblr",
@@ -183,8 +200,9 @@
       "target": "https://www.tumblr.com/abuse",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Loads."
+      "check": "Opened in a browser. tumblr.com/abuse and /abuse/privacy both redirect to the general guidelines, so they are not linked.",
+      "link": "https://help.tumblr.com/knowledge-base/reporting-content/",
+      "linkType": "help page"
     },
     {
       "id": "pornhub",
@@ -193,8 +211,9 @@
       "target": "https://www.pornhub.com/content-removal",
       "coveredByAct": true,
       "fictional": false,
-      "check": "verified",
-      "note": "Loads."
+      "check": "Returns the removal form page to a normal browser request. This test browser cannot open the site.",
+      "link": "https://www.pornhub.com/content-removal",
+      "linkType": "form"
     },
     {
       "id": "google-search",
@@ -203,8 +222,9 @@
       "target": "https://support.google.com/websearch/troubleshooter/3111061",
       "coveredByAct": false,
       "fictional": false,
-      "check": "verified",
-      "note": "Redirects to Google's current removal help page, which loads."
+      "check": "Opened in a browser. Google's request to remove personal content from Search.",
+      "link": "https://support.google.com/websearch/troubleshooter/3111061",
+      "linkType": "form"
     },
     {
       "id": "imgvault",
@@ -214,7 +234,9 @@
       "coveredByAct": true,
       "fictional": true,
       "check": "fictional",
-      "note": "Made-up host on a reserved .example domain, for the demo only."
+      "note": "Made-up host on a reserved .example domain, for the demo only.",
+      "link": null,
+      "linkType": null
     }
   ],
   "demoCase": {
