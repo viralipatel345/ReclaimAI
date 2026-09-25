@@ -40,22 +40,41 @@ export async function GET(req: Request) {
     let unsubscribe = () => {};
     let heartbeat: ReturnType<typeof setInterval> | undefined;
 
+    let closed = false;
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
+        const push = (chunk: string) => {
+          if (closed) return;
+          try {
+            controller.enqueue(encoder.encode(chunk));
+          } catch {
+            stop();
+          }
+        };
+        const stop = () => {
+          if (closed) return;
+          closed = true;
+          unsubscribe();
+          if (heartbeat) clearInterval(heartbeat);
+          try {
+            controller.close();
+          } catch {}
+        };
         const send = (evt: StatusEvent) => {
           if (!owned.has(evt.caseId) && !(onlyCase && evt.caseId === onlyCase)) {
             if (evt.status === "DRAFT") owned.add(evt.caseId);
             else return;
           }
           if (onlyCase && evt.caseId !== onlyCase) return;
-          controller.enqueue(encoder.encode(`event: status\ndata: ${JSON.stringify(evt)}\n\n`));
+          push(`event: status\ndata: ${JSON.stringify(evt)}\n\n`);
         };
-        controller.enqueue(encoder.encode(`: connected\n\n`));
+        push(`: connected\n\n`);
         unsubscribe = subscribeStatus(send);
-        heartbeat = setInterval(() => controller.enqueue(encoder.encode(`: ping\n\n`)), 25_000);
-        req.signal.addEventListener("abort", () => controller.close());
+        heartbeat = setInterval(() => push(`: ping\n\n`), 25_000);
+        req.signal.addEventListener("abort", stop);
       },
       cancel() {
+        closed = true;
         unsubscribe();
         if (heartbeat) clearInterval(heartbeat);
       },
