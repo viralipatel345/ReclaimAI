@@ -1,7 +1,7 @@
 "use client";
 // Client-side reactive access to the active case (localStorage mirror).
 import { useSyncExternalStore } from "react";
-import { createDemoCase } from "./seed";
+import { createBlankCase, createDemoCase } from "./seed";
 import { localMirror } from "./store";
 import type { Case } from "./types";
 
@@ -33,6 +33,22 @@ export function setCase(next: Case | null) {
 export function updateCase(fn: (c: Case) => Case) {
   const c = read();
   if (c) setCase(fn(c));
+}
+
+/** Called after the adult age check. Keeps an existing case; otherwise starts a blank one. */
+export function ensureCase() {
+  if (!read()) setCase(createBlankCase());
+}
+
+export function startBlankCase() {
+  setCase(createBlankCase());
+}
+
+/** Under-18 route: drop everything, in memory and on disk. */
+export function discardCase() {
+  current = null;
+  localMirror.clear();
+  listeners.forEach((l) => l());
 }
 
 export function resetDemo() {

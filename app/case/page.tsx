@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { IntakeChat } from "@/components/IntakeChat";
 import { PrivacyCard } from "@/components/StepRail";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
 import { addLink, draftRequests, removeLink } from "@/lib/caseOps";
@@ -13,7 +15,13 @@ import type { Case } from "@/lib/types";
 export default function TellUsWhere() {
   const c = useCase();
   if (c === undefined) return <Loading />;
-  if (c === null) return <p className="text-muted">No active case. Intake connects in step 2.</p>;
+  if (c === null)
+    return (
+      <p className="text-muted">
+        No active case.{" "}
+        <Link href="/" className="font-medium text-accent">Start here</Link>
+      </p>
+    );
   return <CaseForm c={c} />;
 }
 
@@ -22,7 +30,8 @@ function CaseForm({ c }: { c: Case }) {
   const [linkInput, setLinkInput] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [attested, setAttested] = useState(!!c.attestation.signedAt);
-  const [signature, setSignature] = useState(c.attestation.signature);
+  const signature = c.attestation.signature;
+  const setSignature = (v: string) => updateCase((x) => ({ ...x, attestation: { ...x.attestation, signature: v } }));
 
   const hasNameSearch = c.links.some((l) => l.kind === "name_search");
   const canDraft = attested && signature.trim().length >= 2 && c.links.length > 0;
@@ -55,37 +64,7 @@ function CaseForm({ c }: { c: Case }) {
       <p className="mt-2 max-w-[60ch] text-muted">Share the links. You never need to describe what they show.</p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_1fr]">
-        {/* Intake chat */}
-        <section className={`${card} flex min-h-[460px] flex-col`} aria-label="Intake conversation">
-          <header className="flex items-center justify-between border-b border-line px-5 py-4">
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-accent-soft text-accent">
-                <Icon name="sparkle" size={16} />
-              </span>
-              <div>
-                <p className="text-sm font-medium">Reclaim assistant</p>
-                <p className="text-xs text-muted">Powered by Gemini · never asks what images show</p>
-              </div>
-            </div>
-          </header>
-          <ol className="flex-1 space-y-3 overflow-y-auto px-5 py-5">
-            {c.chat.map((m, i) => (
-              <li key={i} className={`flex ${m.role === "user" ? "justify-end" : ""}`}>
-                <p
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${m.role === "user" ? "rounded-br-md bg-accent text-white" : "rounded-tl-md bg-ground text-ink"}`}
-                >
-                  {m.text}
-                </p>
-              </li>
-            ))}
-          </ol>
-          <form className="flex gap-2 border-t border-line p-3" onSubmit={(e) => e.preventDefault()}>
-            <input disabled placeholder="Reply… (live Gemini intake arrives in step 2)" className="h-11 flex-1 rounded-xl border border-line bg-ground px-4 text-sm placeholder:text-muted disabled:opacity-70" />
-            <button disabled className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-white disabled:opacity-40" aria-label="Send">
-              <Icon name="send" size={16} />
-            </button>
-          </form>
-        </section>
+        <IntakeChat c={c} />
 
         {/* Links */}
         <section className={`${card} p-5`} aria-labelledby="links-title">
