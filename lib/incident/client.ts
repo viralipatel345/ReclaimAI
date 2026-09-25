@@ -36,10 +36,11 @@ const post = <T>(path: string, body: unknown) => call<T>(path, { method: "POST",
 export const incidentApi = {
   createReport: (title: string, notes: string, reporter: Reporter) => post<{ case: CaseReport }>("/report", { title, notes, reporter }),
   discover: (query: string, seedUrls: string[], reporter: Reporter) => post<{ case: CaseReport; decision: "DISCOVER" }>("/discover", { query, seedUrls, reporter }),
-  search(input: { file: File; scope: SearchScope; title: string; notes: string; reporter: Reporter }) {
+  search(input: { file: File; scope: SearchScope; subject?: string; title: string; notes: string; reporter: Reporter }) {
     const fd = new FormData();
     fd.set("file", input.file);
     fd.set("scope", input.scope);
+    if (input.subject) fd.set("subject", input.subject);
     fd.set("title", input.title);
     fd.set("notes", input.notes);
     fd.set("reporter", JSON.stringify(input.reporter));

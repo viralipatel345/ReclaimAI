@@ -109,7 +109,20 @@ export interface ImageMatch {
   coveredByAct?: boolean;
   /** Instagram: the account the image was found on. */
   handle?: string;
+  /** Result of checking the post's own image for AI generation. */
+  ai?: AiLook;
   foundAt: string;
+}
+
+export type AiLookVerdict = "ai_generated" | "likely_ai" | "no_signal" | "unchecked";
+
+export interface AiLook {
+  verdict: AiLookVerdict;
+  /** 0..1 likelihood the image is AI-generated (from provenance + visual analysis). */
+  confidence: number;
+  signs: string[];
+  /** What produced the verdict. */
+  source: "provenance" | "gemini-vision" | "provenance+gemini" | "none";
 }
 
 export type SearchScope = "instagram" | "web";
@@ -117,7 +130,9 @@ export type SearchScope = "instagram" | "web";
 export interface ImageSearch {
   assetId: string;
   scope: SearchScope;
-  provider: "vision" | "fixture";
+  provider: "vision" | "fixture" | "gemini";
+  /** Public figure the search was run for (Instagram scope). */
+  subject?: { name: string; confidence: number; source: "user" | "gemini" };
   labels: string[];
   matches: ImageMatch[];
   searchedAt: string;

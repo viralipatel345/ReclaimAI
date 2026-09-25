@@ -246,6 +246,10 @@ model ImageMatch {
   risk         MatchRisk
   flagged      Boolean    @default(false)
   handle       String?
+  /// ai_generated | likely_ai | no_signal | unchecked
+  aiVerdict    String?
+  aiConfidence Float?
+  aiSigns      String[]
   reasons      String[]
   platformName String?
   coveredByAct Boolean?

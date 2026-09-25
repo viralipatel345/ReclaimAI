@@ -8,7 +8,7 @@ import { useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, Eyebrow, Modal } from "@/components/ui";
 import { CHANNEL_ORDER, CHANNELS, REPORT_STATUS_LABEL } from "@/lib/incident/channels";
 import { incidentApi, type StatusRow } from "@/lib/incident/client";
-import type { AgentAction, CaseReport, CaseStatus, ImageMatch, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, SearchScope, StatusEvent, VerificationResult } from "@/lib/incident/types";
+import type { AgentAction, AiLook, CaseReport, CaseStatus, ImageMatch, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, SearchScope, StatusEvent, VerificationResult } from "@/lib/incident/types";
 import { clockTime, shortDateTime } from "@/lib/time";
 
 const STEPS = ["Report", "Verify", "Act", "File", "Seal"] as const;
@@ -128,6 +128,7 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   const [seed, setSeed] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [scope, setScope] = useState<SearchScope>("instagram");
+  const [subject, setSubject] = useState("");
   const [reporter, setReporter] = useState<Reporter>({ legalName: "Jane Doe", contactEmail: "jane.doe@example.com", signature: "Jane Doe" });
 
   if (c) {
@@ -222,6 +223,12 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
               {image ? image.name : "Choose the image"}
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
             </label>
+            {scope === "instagram" && (
+              <label className="block text-sm font-medium">
+                Who is in the image? <span className="font-normal text-muted">(optional — for public figures; leave blank and Gemini will try to recognise them)</span>
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. a well-known public figure" className={`${input} mt-1.5`} />
+              </label>
+            )}
             <label className="block text-sm font-medium">
               Anything the agent should know <span className="font-normal text-muted">(optional — never what the image shows)</span>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${input} mt-1.5 resize-y`} />
@@ -266,7 +273,7 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
           run("report", async () => {
             if (branch === "MANUAL") return (await incidentApi.createReport(title, notes, reporter)).case;
             if (branch === "DISCOVER") return (await incidentApi.discover(query, seed.trim() ? [seed.trim()] : [], reporter)).case;
-            return (await incidentApi.search({ file: image!, scope, title: scope === "instagram" ? "Where is my image on Instagram?" : "Where is my image?", notes, reporter })).case;
+            return (await incidentApi.search({ file: image!, scope, subject: subject.trim() || undefined, title: scope === "instagram" ? "Where is my image on Instagram?" : "Where is my image?", notes, reporter })).case;
           })
         }
         className={`${btnPrimary} mt-5 w-full sm:w-auto`}
@@ -362,6 +369,18 @@ const RISK_PILL: Record<MatchRisk, { label: string; cls: string; icon: IconName 
   unknown: { label: "Unfamiliar", cls: "bg-ground text-muted border border-line", icon: "info" },
 };
 
+function AiPill({ ai }: { ai: AiLook }) {
+  if (ai.verdict === "unchecked") return <Pill label="image not checkable" cls="bg-ground text-muted border border-line" icon="info" />;
+  if (ai.verdict === "no_signal") return <Pill label="no AI signs" cls="bg-removed-soft text-removed" icon="check" />;
+  return (
+    <Pill
+      label={`${ai.verdict === "ai_generated" ? "AI-generated" : "possibly AI"} · ${Math.round(ai.confidence * 100)}%`}
+      cls={ai.verdict === "ai_generated" ? "bg-overdue text-white" : "bg-overdue-soft text-overdue"}
+      icon="sparkle"
+    />
+  );
+}
+
 function matchPill(m: ImageMatch): { label: string; cls: string; icon: IconName } {
   if (!m.flagged) return RISK_PILL[m.risk];
   if (m.risk === "shady") return { label: m.platformName === "Instagram" ? "Flagged · leak or impersonation" : "Flagged · shady site", cls: "bg-overdue text-white", icon: "flag" };
@@ -375,8 +394,8 @@ function MatchesList({ c, busy, onFile }: { c: CaseReport; busy: string | null; 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-xs uppercase tracking-wider text-muted">{s.scope === "instagram" ? "Instagram posts using your image" : "Where your image appears"}</p>
         <span className="text-xs text-muted">
-          {s.provider === "vision" ? "Google Vision web detection" : "demo fixture"}
-          {s.labels.length > 0 && ` · looks like: ${s.labels.join(", ")}`}
+          {s.provider === "vision" ? "Google Vision web detection" : s.provider === "gemini" ? "Gemini + Google Search" : "demo fixture"}
+          {s.subject ? ` · ${s.subject.name}${s.subject.source === "gemini" ? ` (recognised, ${Math.round(s.subject.confidence * 100)}%)` : ""}` : s.labels.length > 0 ? ` · looks like: ${s.labels.join(", ")}` : ""}
         </span>
       </div>
       {s.matches.length === 0 ? (
@@ -393,6 +412,7 @@ function MatchesList({ c, busy, onFile }: { c: CaseReport; busy: string | null; 
                     <Pill label={p.label} cls={p.cls} icon={p.icon} />
                     {m.handle ? `@${m.handle}` : m.host}
                     <span className="font-mono text-[10px] uppercase tracking-wider text-muted">{m.matchType} match</span>
+                    {m.ai && <AiPill ai={m.ai} />}
                   </p>
                   {m.title && <p className="mt-0.5 truncate text-sm text-muted">{m.title}</p>}
                   <p className="mt-0.5 text-xs text-muted">{m.reasons.join(" · ")}</p>

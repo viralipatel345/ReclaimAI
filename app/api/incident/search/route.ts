@@ -1,5 +1,6 @@
 import { gate, gateResponse } from "@/lib/incident/auth";
 import { cleanReporter, createReport, runImageSearch } from "@/lib/incident/ops";
+import { NoPublicFigureError } from "@/lib/incident/instagramSearch";
 import { MAX_MEDIA_BYTES, mediaKindOf } from "@/lib/provenance";
 
 /**
@@ -26,9 +27,11 @@ export async function POST(req: Request) {
     }
     const draft = await createReport(user, { branch: "IMAGE_SEARCH", title, notes, reporter: cleanReporter(reporter, new Date().toISOString()) });
     const scope = String(form.get("scope") ?? "instagram") === "web" ? "web" : "instagram";
-    const c = await runImageSearch(draft, { buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type, scope });
+    const subjectName = String(form.get("subject") ?? "").trim().slice(0, 80) || undefined;
+    const c = await runImageSearch(draft, { buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type, scope, subjectName });
     return Response.json({ case: c, search: c.imageSearch }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (err) {
+    if (err instanceof NoPublicFigureError) return Response.json({ error: err.message }, { status: 422 });
     return gateResponse(err);
   }
 }
