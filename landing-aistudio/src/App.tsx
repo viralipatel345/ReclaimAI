@@ -1,21 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Landing } from './landing/Landing';
-import { StealthCloak } from './components/StealthCloak';
 
-// Quick exit: Esc (or the header button) swaps the page for a neutral news page instantly.
+// Quick exit: close this tab. Browsers only let a page close tabs it opened itself,
+// so when close is blocked we swap the tab to a neutral page with replace(),
+// which also removes Reclaim from the back button.
+const NEUTRAL = 'https://www.google.com/search?q=weather';
+
+function quickExit() {
+  window.close();
+  window.location.replace(NEUTRAL);
+}
+
 export default function App() {
-  const [stealth, setStealth] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setStealth(true);
+      if (e.key === 'Escape') quickExit();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  return (
-    <>
-      {stealth && <StealthCloak onDeactivate={() => setStealth(false)} />}
-      <Landing onQuickExit={() => setStealth(true)} />
-    </>
-  );
+  return <Landing onQuickExit={quickExit} />;
 }
