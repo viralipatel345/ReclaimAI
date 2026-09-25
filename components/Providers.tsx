@@ -7,7 +7,7 @@ import type { PublicAppConfig } from "@/lib/config";
 
 const DemoContext = createContext(false);
 export const useDemoMode = () => useContext(DemoContext);
-const ConfigContext = createContext<PublicAppConfig>({ googleClientId: "", testPlatformInbox: "" });
+const ConfigContext = createContext<PublicAppConfig>({ googleClientId: "", testPlatformInbox: "", sendToSelf: false });
 export const useAppConfig = () => useContext(ConfigContext);
 
 export function Providers({ demoMode, config, children }: { demoMode: boolean; config: PublicAppConfig; children: React.ReactNode }) {

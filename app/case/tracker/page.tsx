@@ -9,8 +9,8 @@ import { clockTime, hoursMinutes, shortDateTime } from "@/lib/time";
 import { useCase } from "@/lib/useCase";
 import { useChase } from "@/lib/useChase";
 import { needsEscalation } from "@/lib/escalation";
-import { prepareSubmission } from "@/lib/submission";
-import { useDemoMode } from "@/components/Providers";
+import { emailSubmission, prepareSubmission } from "@/lib/submission";
+import { useAppConfig, useDemoMode } from "@/components/Providers";
 import { ReplyModal } from "@/components/ReplyModal";
 import { NeedsYou } from "@/components/NeedsYou";
 import { CaseBackup } from "@/components/CaseBackup";
@@ -43,6 +43,7 @@ function TrackerView({ c, now }: { c: Case; now: number }) {
   const overdue = c.requests.filter((r) => needsEscalation(r, now));
   const [replyFor, setReplyFor] = useState<TakedownRequest | null>(null);
   const [openMsg, setOpenMsg] = useState<OutboundMessage | null>(null);
+  const { sendToSelf } = useAppConfig();
   const nothingSent = c.requests.every((r) => !r.sentAt);
   return (
     <div>
@@ -95,7 +96,12 @@ function TrackerView({ c, now }: { c: Case; now: number }) {
         <Modal title={openMsg.subject} onClose={() => setOpenMsg(null)}>
           {(() => {
             const r = c.requests.find((x) => x.id === openMsg.requestId)!;
-            return <SubmissionPanel s={prepareSubmission(c, { ...r, subject: openMsg.subject, body: openMsg.body })} />;
+            const rcpt = r.gmail ? { to: r.gmail.to, standIn: r.gmail.standIn } : sendToSelf && c.contactEmail ? { to: c.contactEmail, standIn: true } : null;
+            return (
+              <SubmissionPanel
+                s={rcpt?.standIn ? emailSubmission(rcpt.to, `[Reclaim test → ${r.platformName}] ${openMsg.subject}`, openMsg.body, r.platformName) : prepareSubmission(c, { ...r, subject: openMsg.subject, body: openMsg.body })}
+              />
+            );
           })()}
         </Modal>
       )}

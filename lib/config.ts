@@ -48,6 +48,8 @@ export function publicAppConfig() {
   return {
     googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
     testPlatformInbox: process.env.TEST_PLATFORM_INBOX ?? "",
+    /** No test inbox needed: each request is addressed to the user's own email, labeled as a stand-in. */
+    sendToSelf: process.env.SEND_TO_SELF === "true",
   };
 }
 export type PublicAppConfig = ReturnType<typeof publicAppConfig>;
