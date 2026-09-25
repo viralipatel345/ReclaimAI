@@ -6,6 +6,7 @@ import { Icon } from "@/components/Icon";
 import { GmailConnect } from "@/components/GmailConnect";
 import { PrivacyCard } from "@/components/StepRail";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
+import { IdentityVerifier } from "@/components/IdentityVerifier";
 import { addLink, draftRequests, removeLink } from "@/lib/caseOps";
 import { nameSearchUrl, normalizeUrl } from "@/lib/platforms";
 import { ATTESTATION_TEXT } from "@/lib/templates";
@@ -33,6 +34,7 @@ function CaseForm({ c }: { c: Case }) {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const demo = useDemoMode();
+  const [idVerified, setIdVerified] = useState(false);
   const checking = useResolveLinks(c);
   const [attested, setAttested] = useState(!!c.attestation.signedAt);
   const signature = c.attestation.signature;
@@ -40,7 +42,7 @@ function CaseForm({ c }: { c: Case }) {
 
   const hasNameSearch = c.links.some((l) => l.kind === "name_search");
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.contactEmail);
-  const canDraft = attested && signature.trim().length >= 2 && c.legalName.trim().length >= 2 && emailOk && c.links.length > 0 && checking.size === 0 && !drafting;
+  const canDraft = attested && signature.trim().length >= 2 && c.legalName.trim().length >= 2 && emailOk && c.links.length > 0 && checking.size === 0 && !drafting && idVerified;
 
   const onAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +112,7 @@ function CaseForm({ c }: { c: Case }) {
           <div className="mt-4">
             <GmailConnect onConnected={(email) => updateCase((x) => ({ ...x, contactEmail: email }))} />
           </div>
+          <IdentityVerifier claimedName={c.legalName} onVerified={setIdVerified} />
           <p className="mt-5 flex items-start gap-2 rounded-xl bg-ground p-3 text-xs leading-relaxed text-muted">
             <Icon name="lock" size={14} className="mt-0.5" />
             You’ll never be asked what the images show. Reclaim only needs the links.
@@ -232,7 +235,7 @@ function CaseForm({ c }: { c: Case }) {
             )}
             {!canDraft && !drafting && (
               <p className="mt-2 text-center text-xs text-muted">
-                {checking.size > 0 ? "Still finding removal channels…" : "Add your name, email and at least one link, then tick the statement and sign."}
+                {checking.size > 0 ? "Still finding removal channels…" : !idVerified ? "Verify your identity in the details section before drafting." : "Add your name, email and at least one link, then tick the statement and sign."}
               </p>
             )}
           </div>
