@@ -1,0 +1,103 @@
+/* iMessage-style bubbles. Tails are drawn with two pseudo-elements: a bubble-coloured
+   blob that pokes out of the corner and a page-coloured blob that carves it into a tail. */
+.bubble {
+  position: relative;
+  max-width: 75%;
+  padding: 8px 14px;
+  font-size: 16px;
+  line-height: 1.35;
+  border-radius: 18px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.in {
+  align-self: flex-start;
+  background: #e9e9eb;
+  color: #0e1116;
+}
+
+.out {
+  align-self: flex-end;
+  background: #e1261c;
+  color: #fff;
+}
+
+/* Tighter corners between consecutive bubbles from the same sender. */
+.inNotFirst { border-top-left-radius: 5px; }
+.inNotLast { border-bottom-left-radius: 5px; }
+.outNotFirst { border-top-right-radius: 5px; }
+.outNotLast { border-bottom-right-radius: 5px; }
+
+.tailIn::before,
+.tailOut::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  height: 20px;
+  width: 20px;
+  z-index: 0;
+}
+
+.tailIn::after,
+.tailOut::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  height: 20px;
+  width: 10px;
+  z-index: 1;
+  background: var(--chat-bg, #fff);
+}
+
+.tailIn::before {
+  left: -7px;
+  background: #e9e9eb;
+  border-bottom-right-radius: 15px;
+}
+
+.tailIn::after {
+  left: -10px;
+  border-bottom-right-radius: 10px;
+}
+
+.tailOut::before {
+  right: -7px;
+  background: #e1261c;
+  border-bottom-left-radius: 15px;
+}
+
+.tailOut::after {
+  right: -10px;
+  border-bottom-left-radius: 10px;
+}
+
+/* Typing indicator */
+.dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 20px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8e8e93;
+  animation: chatDot 1.2s ease-in-out infinite;
+}
+
+.dot:nth-child(2) { animation-delay: 0.18s; }
+.dot:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes chatDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Hide the scrollbar on the thread without disabling scrolling. */
+.thread {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 17, 22, 0.15) transparent;
+}

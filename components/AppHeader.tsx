@@ -18,10 +18,13 @@ export function Logo() {
   );
 }
 
+// The landing page and the chat onboarding (/start) draw their own header and footer.
+const OWN_CHROME = new Set(["/", "/start"]);
+
 export function AppHeader() {
   const demo = useDemoMode();
   const pathname = usePathname();
-  if (pathname === "/") return null;
+  if (OWN_CHROME.has(pathname)) return null;
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-3 px-5 md:px-8">
@@ -52,7 +55,7 @@ export function AppHeader() {
 export function LegalNotice() {
   const demo = useDemoMode();
   const pathname = usePathname();
-  if (pathname === "/") return null;
+  if (OWN_CHROME.has(pathname)) return null;
   return (
     <footer className="mt-auto border-t border-line">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-1 px-4 py-5 text-xs text-muted md:flex-row md:items-center md:justify-between md:px-12">
