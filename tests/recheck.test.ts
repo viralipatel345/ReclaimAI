@@ -136,3 +136,23 @@ describe("demo: Fast-forward 3 days", () => {
     expect(c.evidence.filter((e) => e.event === "recheck")).toHaveLength(3);
   });
 });
+
+describe("demo mode with a live link", () => {
+  it("uses fixtures for the fictional seed URLs but re-checks any other link for real", async () => {
+    const { addLinkWithRequest } = await import("@/lib/recheckOps");
+    const sim = simulatePlatformResponses(createDemoCase(NOW), NOW);
+    const live = "https://reclaim-demo-test.tumblr.com/post/123";
+    // As resolved live by Gemini + Google Search in the demo
+    const tumblr = { id: "search:tumblr.com", name: "Tumblr", channel: "form" as const, target: "https://www.tumblr.com/abuse", confidence: 0.9, source: "search" as const, coveredByAct: true };
+    const withLive = addLinkWithRequest(sim, live, new Date(NOW).toISOString(), true, tumblr).next;
+    const fetched: string[] = [];
+    const fetchText = async (url: string) => {
+      fetched.push(url);
+      return { httpStatus: 404, title: "", text: "" };
+    };
+    const { case: c } = await runRecheck(withLive, NOW + 60000, { demo: true, fetchText });
+    expect(fetched).toEqual([live]); // seed URLs never hit the network
+    expect(latestRequestFor(c, c.links.find((l) => l.url === live)!.id)!.status).toBe("removed");
+    expect(c.activity[0].text).toMatch(/confirmed .* removed/);
+  });
+});

@@ -19,13 +19,14 @@ describe("resolve_platform", () => {
     expect(gen).not.toHaveBeenCalled();
   });
 
-  it("sends only the hostname — never the path — to Gemini", async () => {
+  it("sends only the base domain — never the path or subdomain — to Gemini", async () => {
     const gen = fakeGen('{"platform":"Site A","channel":"form","target":"https://site-a.example/report","confidence":0.9}');
-    await resolvePlatform("https://site-a.example/u/jordan-ellis/private-album-77", gen);
+    await resolvePlatform("https://someuser.site-a.example/u/jordan-ellis/private-album-77", gen);
     const prompt = JSON.stringify((gen as ReturnType<typeof vi.fn>).mock.calls[0][0]);
     expect(prompt).toContain("site-a.example");
     expect(prompt).not.toContain("jordan-ellis");
     expect(prompt).not.toContain("private-album-77");
+    expect(prompt).not.toContain("someuser");
     expect(prompt).toContain("googleSearch");
   });
 
@@ -61,5 +62,20 @@ describe("resolve_platform", () => {
   it("returns unresolved when Gemini errors", async () => {
     const p = await resolvePlatform("https://site-err.example/x", vi.fn(async () => { throw new Error("503"); }));
     expect(p.source).toBe("unresolved");
+  });
+});
+
+describe("resolve_platform retries an ungrounded answer once", () => {
+  it("asks again when the model skipped the search", async () => {
+    const answer = '{"platform":"Site R","channel":"form","target":"https://site-r.example/abuse","confidence":0.9}';
+    let calls = 0;
+    const gen: Generator = async () => {
+      calls++;
+      const chunks = calls === 1 ? [] : [{ web: { uri: "https://site-r.example/help", title: "site-r.example" } }];
+      return { model: "t", response: { text: answer, candidates: [{ groundingMetadata: { groundingChunks: chunks } }] } as unknown as GenerateContentResponse };
+    };
+    const p = await resolvePlatform("https://blog.site-r.example/post/1", gen);
+    expect(calls).toBe(2);
+    expect(p).toMatchObject({ source: "search", target: "https://site-r.example/abuse" });
   });
 });
