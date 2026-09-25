@@ -111,7 +111,10 @@ export interface OutboundMessage {
   subject: string;
   /** Short model-written paragraph (reminder line or complaint summary); fixed facts live in `body`. */
   aiText: string;
+  /** "pending" never persists; "template" after a fallback — only "gemini" is labeled as Gemini's. */
   aiSource: "gemini" | "template";
+  /** Set once the FTC page has asked Gemini, so a fallback isn't retried on every render. */
+  aiTried?: boolean;
   body: string;
   sentAt?: string;
   simulated?: boolean;
@@ -176,4 +179,6 @@ export interface Case {
   /** Demo mode only: which fixture version each URL serves, and name-search fixture results. */
   demoPageState?: Record<string, PageStatus>;
   demoNameResults?: { url: string; title: string }[];
+  /** Demo only: set by "Fast-forward 3 days" so the tracker can summarise what the agent did. */
+  demoBanner?: { label: string; at: string };
 }

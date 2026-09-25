@@ -130,10 +130,10 @@ export function chase(c: Case, now: number, simulated: boolean): Case {
   return { ...c, requests, outbox, activity: [...acts.reverse(), ...c.activity] };
 }
 
-export function setOutboxAiText(c: Case, messageId: string, aiText: string, body?: string): Case {
+export function setOutboxAiText(c: Case, messageId: string, aiText: string, body?: string, source: "gemini" | "template" = "gemini"): Case {
   return {
     ...c,
-    outbox: (c.outbox ?? []).map((m) => (m.id === messageId ? { ...m, aiText, aiSource: "gemini" as const, body: body ?? m.body } : m)),
+    outbox: (c.outbox ?? []).map((m) => (m.id === messageId ? { ...m, aiText, aiSource: source, body: body ?? m.body } : m)),
   };
 }
 
