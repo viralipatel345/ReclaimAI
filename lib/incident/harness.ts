@@ -15,7 +15,7 @@
 import { isDemoMode } from "../config";
 import { newId } from "../ids";
 import { fetchPageImage } from "../provenance/fetchImage";
-import { addHours } from "../time";
+import { addHours, shortDateTime } from "../time";
 import { reverseImageSearch } from "./imageSearch";
 import { searchForFigure } from "./instagramSearch";
 import { CADENCE_OPTIONS, DEFAULT_MANDATE, MANDATE_ACTIONS, MANDATE_TEXT } from "./mandate";
@@ -139,7 +139,7 @@ export async function runHarness(c: CaseReport, opts: RunOptions = {}): Promise<
     if (r.status === "failed") note({ kind: "skipped", action: "platform_notice", target: m.pageUrl, reason: r.error ?? "notice failed", reportId: r.id });
     else {
       sent++;
-      note({ kind: "auto", action: "platform_notice", target: m.pageUrl, reason: `${r.status === "simulated" || r.status === "sent" ? "sent" : "prepared"} to ${r.reference ?? m.host}${r.deadlineAt ? `, due ${r.deadlineAt}` : ""}`, reportId: r.id });
+      note({ kind: "auto", action: "platform_notice", target: m.pageUrl, reason: `${r.status === "simulated" || r.status === "sent" ? "sent" : "prepared"} to ${r.reference ?? m.host}${r.deadlineAt ? `, due ${shortDateTime(r.deadlineAt)}` : ""}`, reportId: r.id });
     }
   }
 

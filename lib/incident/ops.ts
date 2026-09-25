@@ -106,7 +106,7 @@ export async function runImageSearch(
     } catch (err) {
       const demo = opts.demo ?? isDemoMode();
       if (!(err instanceof NoPublicFigureError) || !demo) throw err;
-      note = " No public figure recognised, so this is the demo fixture.";
+      note = " — no public figure recognised, so this is the demo fixture";
     }
   }
   search ??= keepOnlyAi(await reverseImageSearch(input.buffer, scan.asset.id, { ...opts, scope, reporterName: c.reporter?.legalName }));
