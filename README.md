@@ -145,6 +145,18 @@ gcloud run deploy reclaim --source . --region $REGION --allow-unauthenticated \
 
 The Cloud Run service account needs `roles/secretmanager.secretAccessor` on both secrets.
 
+**If `--source` fails with `PERMISSION_DENIED … default service account`** (common on hackathon/lab projects where you can't edit project IAM), build locally and deploy the image instead. This is how the demo is currently deployed:
+
+```bash
+IMG=us-central1-docker.pkg.dev/$PROJECT/cloud-run-source-deploy/reclaim:$(git rev-parse --short HEAD)
+gcloud auth configure-docker us-central1-docker.pkg.dev
+docker buildx build --platform linux/amd64 -t "$IMG" --push .   # Cloud Run is x86; build for amd64 on Apple silicon
+gcloud run deploy reclaim --image "$IMG" --region $REGION --allow-unauthenticated \
+  --set-env-vars DEMO_MODE=true \
+  --set-secrets GEMINI_API_KEY=gemini-api-key:latest,RECHECK_CRON_SECRET=recheck-cron-secret:latest \
+  --min-instances 1 --max-instances 1
+```
+
 `--max-instances 1` is required while the server store is in memory, so every request and the scheduler hit the same instance. `--min-instances 1` avoids a cold start mid-demo. Switch the store to Firestore before scaling out.
 
 Cloud Run gives you HTTPS, which Android requires to install the PWA. On the phone: open the URL in Chrome → **Install app** → Share any link → **Reclaim**.
