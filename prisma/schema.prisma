@@ -1,0 +1,180 @@
+// Incident reporting + provenance verification schema (PostgreSQL).
+// Runtime currently uses the in-memory IncidentStore (lib/incident/store.ts);
+// generate a Prisma client and implement PrismaIncidentStore to switch.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthProvider {
+  AUTH0
+  FIREBASE
+  SUPABASE
+}
+
+enum ReportBranch {
+  MANUAL
+  DISCOVER
+}
+
+enum CaseStatus {
+  DRAFT
+  SCANNING
+  ANALYZED
+  ESCALATED
+  SEALED
+  CLOSED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+  AUDIO
+}
+
+enum ProvenanceVerdict {
+  AI_GENERATED
+  LIKELY_AI
+  NO_SIGNAL
+  INCONCLUSIVE
+}
+
+enum EscalationStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  FAILED
+}
+
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  authProvider    AuthProvider
+  authSubject     String
+  displayName     String?
+  phone           String?
+  humanVerifiedAt DateTime?
+  createdAt       DateTime     @default(now())
+  reports         CaseReport[]
+
+  @@unique([authProvider, authSubject])
+}
+
+model CaseReport {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  branch       ReportBranch
+  status       CaseStatus   @default(DRAFT)
+  title        String
+  notes        String       @default("")
+  /// Draft records are working copies; "replace with original" seals them into the primary record.
+  isDraft      Boolean      @default(true)
+  originalId   String?
+  original     CaseReport?  @relation("DraftOf", fields: [originalId], references: [id])
+  drafts       CaseReport[] @relation("DraftOf")
+  /// sha256 of the canonical sealed record, set when sealed.
+  recordHash   String?
+  sealedAt     DateTime?
+  /// Latest Gemini AgentSuggestions payload.
+  suggestions  Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  assets        MediaAsset[]
+  verifications VerificationResult[]
+  scrape        ScrapeData?
+  escalations   ParasellEscalation[]
+  events        StatusEvent[]
+}
+
+model MediaAsset {
+  id         String    @id @default(cuid())
+  caseId     String
+  case       CaseReport @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind       MediaKind
+  mimeType   String
+  sha256     String
+  bytes      Int
+  /// Object-store key (S3 / Cloudinary). Null when only the hash is retained.
+  storageRef String?
+  /// Where the scraper found it (Branch B) — null for manual uploads.
+  sourceUrl  String?
+  createdAt  DateTime  @default(now())
+
+  verification VerificationResult?
+}
+
+model SynthIdAnalysis {
+  id                  String             @id @default(cuid())
+  verificationId      String             @unique
+  verification        VerificationResult @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  isGoogleAiGenerated Boolean
+  /// 0..1
+  synthIdConfidence   Float
+  modality            MediaKind
+  detectedModel       String?
+  /// "vertex" or "stub" (detector not configured).
+  source              String
+  checkedAt           DateTime           @default(now())
+}
+
+model VerificationResult {
+  id                 String            @id @default(cuid())
+  caseId             String
+  case               CaseReport        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assetId            String            @unique
+  asset              MediaAsset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  synthId            SynthIdAnalysis?
+  c2paPresent        Boolean
+  c2paIssuer         String?
+  c2paClaimGenerator String?
+  c2paAiGenerated    Boolean?
+  c2paAssertions     String[]
+  verdict            ProvenanceVerdict
+  summary            String
+  createdAt          DateTime          @default(now())
+}
+
+model ScrapeData {
+  id          String     @id @default(cuid())
+  caseId      String     @unique
+  case        CaseReport @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  decision    String     @default("DISCOVER")
+  query       String
+  /// [{ url, title, snippet, fetchedAt }]
+  sources     Json
+  mediaUrls   String[]
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+}
+
+model ParasellEscalation {
+  id             String           @id @default(cuid())
+  caseId         String
+  case           CaseReport       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  externalId     String?
+  status         EscalationStatus @default(PENDING)
+  requestPayload Json
+  responseBody   Json?
+  error          String?
+  submittedAt    DateTime?
+  createdAt      DateTime         @default(now())
+}
+
+model StatusEvent {
+  id     String     @id @default(cuid())
+  caseId String
+  case   CaseReport @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  status CaseStatus
+  text   String
+  at     DateTime   @default(now())
+
+  @@index([caseId, at])
+}
