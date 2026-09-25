@@ -126,7 +126,7 @@ function ClockCard({ r, c, now, onReply, onOpenMessage }: { r: TakedownRequest; 
             <p className="mt-1 font-display text-[44px] font-semibold leading-none tracking-tight text-removed">
               {hoursMinutes(new Date(r.removedAt!).getTime() - sent)}
             </p>
-            {r.deadlineAt && new Date(r.removedAt!).getTime() > new Date(r.deadlineAt).getTime() && (
+            {r.coveredByAct && r.deadlineAt && new Date(r.removedAt!).getTime() > new Date(r.deadlineAt).getTime() && (
               <p className="mt-2 text-xs text-overdue">
                 {hoursMinutes(new Date(r.removedAt!).getTime() - new Date(r.deadlineAt).getTime())} past the legal deadline
               </p>
@@ -252,7 +252,7 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
   const names = overdue.map((r) => r.platformName).join(" and ");
   const filed = c.requests.filter((r) => r.escalatedAt);
   return (
-    <aside className="h-fit space-y-6 rounded-2xl bg-panel p-6 text-white">
+    <aside className={`h-fit space-y-6 rounded-2xl bg-panel p-6 text-white ${overdue.length ? "order-first xl:order-none" : ""}`}>
       {overdue.length > 0 ? (
         <div>
           <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3A6A0]">

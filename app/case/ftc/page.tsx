@@ -105,7 +105,7 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
           </div>
         </div>
 
-        <aside className="h-fit space-y-5 rounded-2xl bg-panel p-6 text-white">
+        <aside className="order-first h-fit space-y-5 rounded-2xl bg-panel p-6 text-white xl:order-none">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3A6A0]">{r.status === "rejected" ? "Rejected" : "Past deadline"}</p>
             {r.status === "rejected" ? (

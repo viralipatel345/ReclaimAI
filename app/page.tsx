@@ -36,15 +36,7 @@ export default function Landing() {
         <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-muted md:text-xl">
           Share a link once. Reclaim sends the legal request, watches the clock, re-checks every three days, and escalates to the FTC if a platform misses its deadline.
         </p>
-        <ul className="mt-10 grid gap-5 sm:grid-cols-3">
-          {PROMISES.map((p) => (
-            <li key={p.title} className="border-t border-line pt-4">
-              <Icon name={p.icon} className="text-accent" />
-              <p className="mt-3 font-medium">{p.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted">{p.text}</p>
-            </li>
-          ))}
-        </ul>
+        <Promises className="mt-10 hidden lg:grid" />
       </section>
 
       <section className={`${card} h-fit p-6 md:p-8`} aria-labelledby="gate-title">
@@ -73,6 +65,22 @@ export default function Landing() {
           Nothing is saved until you add a link. Press Esc at any time to leave this page instantly.
         </p>
       </section>
+
+      <Promises className="grid lg:hidden" />
     </div>
+  );
+}
+
+function Promises({ className }: { className: string }) {
+  return (
+    <ul className={`gap-5 sm:grid-cols-3 ${className}`}>
+      {PROMISES.map((p) => (
+        <li key={p.title} className="border-t border-line pt-4">
+          <Icon name={p.icon} className="text-accent" />
+          <p className="mt-3 font-medium">{p.title}</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{p.text}</p>
+        </li>
+      ))}
+    </ul>
   );
 }
