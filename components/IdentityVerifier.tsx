@@ -1,7 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { Icon } from "@/components/Icon";
-import { card } from "@/components/ui";
+import { AlertTriangle, ShieldCheck, Sparkles, Upload } from "lucide-react";
 
 type VerifyResult = {
   verdict: "PASS" | "FAIL";
@@ -61,16 +60,20 @@ export function IdentityVerifier({
     }
   };
 
+  const passed = result?.verdict === "PASS";
+
   return (
-    <div className={`${card} mt-4 p-4`}>
-      <div className="flex items-center gap-2">
-        <Icon name="shield" size={16} />
-        <h3 className="text-sm font-semibold">Verify your identity</h3>
-        <span className="ml-auto rounded-full bg-ground px-2 py-0.5 font-mono text-xs text-muted">
-          prevents fraud
+    <div className="mt-5 rounded-3xl bg-[#F5F6F8] p-5">
+      <div className="flex items-center gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#E1261C]">
+          <ShieldCheck size={17} />
         </span>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h3 className="text-[15px] font-bold text-[#0E1116]">Verify your identity</h3>
+          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#6B7280]">prevents fraud</span>
+        </div>
       </div>
-      <p className="mt-1 text-xs leading-relaxed text-muted">
+      <p className="mt-3 text-xs leading-relaxed text-[#6B7280]">
         Upload a government-issued ID to confirm you are the person in the content.
         Passports, driver&apos;s licenses, and residency cards accepted.
       </p>
@@ -87,36 +90,30 @@ export function IdentityVerifier({
         <button
           onClick={() => inputRef.current?.click()}
           disabled={!claimedName.trim()}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line py-3 text-sm text-muted hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-white text-sm font-semibold text-[#4B5563] transition hover:border-[#E1261C] hover:text-[#B3130F] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <Icon name="share" size={16} className="-rotate-180" /> Upload ID document
+          <Upload size={16} /> Upload ID document
         </button>
       )}
 
       {status === "loading" && (
-        <div className="mt-3 flex items-center justify-center gap-2 py-3 text-sm text-muted">
-          <Icon name="sparkle" size={16} className="animate-pulse" />
+        <div className="mt-4 flex h-12 items-center justify-center gap-2 text-sm font-medium text-[#6B7280]">
+          <Sparkles size={16} className="animate-pulse text-[#E1261C]" />
           Verifying with Document AI…
         </div>
       )}
 
       {status === "done" && result && (
-        <div
-          className={`mt-3 rounded-xl p-3 text-sm ${
-            result.verdict === "PASS"
-              ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300"
-              : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-300"
-          }`}
-        >
-          <div className="flex items-center gap-2 font-semibold">
-            <Icon name={result.verdict === "PASS" ? "shield-check" : "alert"} size={16} />
-            {result.verdict === "PASS" ? "Identity verified" : "Verification failed"}
+        <div className={`mt-4 rounded-2xl p-4 text-sm ${passed ? "bg-[#E7F6EC] text-[#166534]" : "bg-[#FDECEA] text-[#B3130F]"}`}>
+          <div className="flex items-center gap-2 font-bold">
+            {passed ? <ShieldCheck size={16} /> : <AlertTriangle size={16} />}
+            {passed ? "Identity verified" : "Verification failed"}
           </div>
-          <p className="mt-1 text-xs opacity-80">{result.reason}</p>
-          {result.verdict === "FAIL" && (
+          <p className="mt-1 text-xs leading-relaxed opacity-80">{result.reason}</p>
+          {!passed && (
             <button
               onClick={reset}
-              className="mt-2 text-xs underline underline-offset-2 opacity-70 hover:opacity-100"
+              className="mt-2 text-xs font-semibold underline underline-offset-2 opacity-80 hover:opacity-100"
             >
               Try again with a different photo
             </button>
@@ -124,7 +121,7 @@ export function IdentityVerifier({
         </div>
       )}
 
-      {error && <p className="mt-2 text-xs text-overdue">{error}</p>}
+      {error && <p className="mt-2 text-xs text-[#B3130F]">{error}</p>}
     </div>
   );
 }
