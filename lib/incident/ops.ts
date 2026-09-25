@@ -8,7 +8,7 @@ import { analyzeCase, inputFromCase } from "./orchestrator";
 import { runDiscoverScrape } from "./scrape";
 import { incidentStore, statusEvent, transition, type IncidentStore } from "./store";
 import { publishStatus } from "./events";
-import type { CaseReport, ReportBranch, Reporter, User } from "./types";
+import type { CaseReport, ReportBranch, Reporter, SearchScope, User } from "./types";
 
 const MAX_DISCOVER_SCANS = 5;
 
@@ -80,30 +80,40 @@ export async function runDiscovery(c: CaseReport, query: string, seedUrls: strin
 }
 
 /** Branch C: provenance-scan the uploaded image, find where it appears online, classify each host. */
-export async function runImageSearch(c: CaseReport, input: { buffer: Buffer; mimeType: string }, store: IncidentStore = incidentStore, opts: { demo?: boolean; fetchImpl?: typeof fetch } = {}): Promise<CaseReport> {
+export async function runImageSearch(
+  c: CaseReport,
+  input: { buffer: Buffer; mimeType: string; scope?: SearchScope },
+  store: IncidentStore = incidentStore,
+  opts: { demo?: boolean; fetchImpl?: typeof fetch } = {},
+): Promise<CaseReport> {
+  const scope = input.scope ?? "instagram";
   const scan = await scanMedia({ buffer: input.buffer, mimeType: input.mimeType, caseId: c.id });
   let next = attachScans(c, [scan]);
-  const flagged = scan.verification.verdict === "ai_generated" || scan.verification.verdict === "likely_ai";
-  next = await transition(next, "SCANNING", `Image fingerprinted and checked for AI provenance${flagged ? " — flagged" : ""}. Searching the web for it.`, store);
+  const aiFlag = scan.verification.verdict === "ai_generated" || scan.verification.verdict === "likely_ai";
+  next = await transition(next, "SCANNING", `Image fingerprinted and checked for AI provenance${aiFlag ? " — flagged" : ""}. Searching ${scope === "instagram" ? "Instagram" : "the web"} for it.`, store);
 
-  const search = await reverseImageSearch(input.buffer, scan.asset.id, opts);
+  const search = await reverseImageSearch(input.buffer, scan.asset.id, { ...opts, scope, reporterName: c.reporter?.legalName });
   const scrape = {
     id: newId("scr"),
     caseId: c.id,
     decision: "DISCOVER" as const,
-    query: "reverse image search",
-    sources: search.matches.map((m) => ({ url: m.pageUrl, title: m.title ?? m.host, snippet: `${m.risk} · ${m.matchType} match · ${m.reasons.join("; ")}`, fetchedAt: search.searchedAt })),
+    query: scope === "instagram" ? "reverse image search · Instagram" : "reverse image search",
+    sources: search.matches.map((m) => ({ url: m.pageUrl, title: m.title ?? m.host, snippet: `${m.flagged ? "flagged" : m.risk} · ${m.matchType} match · ${m.reasons.join("; ")}`, fetchedAt: search.searchedAt })),
     mediaUrls: search.matches.map((m) => m.url),
     startedAt: search.searchedAt,
     completedAt: search.searchedAt,
   };
   next = { ...next, imageSearch: search, scrape };
 
+  const n = search.matches.length;
   const shady = search.matches.filter((m) => m.risk === "shady").length;
-  const normal = search.matches.filter((m) => m.risk === "normal").length;
-  const line = search.matches.length
-    ? `Found your image on ${search.matches.length} page${search.matches.length === 1 ? "" : "s"}: ${shady} shady, ${normal} known platform${normal === 1 ? "" : "s"}, ${search.matches.length - shady - normal} unfamiliar${search.provider === "fixture" ? " (demo fixture)" : ""}.`
-    : "No copies of your image found on the web right now. Reclaim can re-check later.";
+  const suffix = search.provider === "fixture" ? " (demo fixture)" : "";
+  const line =
+    n === 0
+      ? `No copies of your image found on ${scope === "instagram" ? "Instagram" : "the web"} right now. Reclaim can re-check later.`
+      : scope === "instagram"
+        ? `Found your image on ${n} Instagram post${n === 1 ? "" : "s"} — all flagged for you, ${shady} with leak or impersonation signals${suffix}.`
+        : `Found your image on ${n} page${n === 1 ? "" : "s"}: ${shady} shady, ${search.matches.filter((m) => m.risk === "normal").length} known platforms, ${search.matches.filter((m) => m.risk === "unknown").length} unfamiliar${suffix}.`;
   return transition(next, "SCANNING", line, store);
 }
 

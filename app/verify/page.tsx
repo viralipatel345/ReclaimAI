@@ -8,7 +8,7 @@ import { useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, Eyebrow, Modal } from "@/components/ui";
 import { CHANNEL_ORDER, CHANNELS, REPORT_STATUS_LABEL } from "@/lib/incident/channels";
 import { incidentApi, type StatusRow } from "@/lib/incident/client";
-import type { AgentAction, CaseReport, CaseStatus, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, StatusEvent, VerificationResult } from "@/lib/incident/types";
+import type { AgentAction, CaseReport, CaseStatus, ImageMatch, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, SearchScope, StatusEvent, VerificationResult } from "@/lib/incident/types";
 import { clockTime, shortDateTime } from "@/lib/time";
 
 const STEPS = ["Report", "Verify", "Act", "File", "Seal"] as const;
@@ -127,6 +127,7 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   const [query, setQuery] = useState("");
   const [seed, setSeed] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [scope, setScope] = useState<SearchScope>("instagram");
   const [reporter, setReporter] = useState<Reporter>({ legalName: "Jane Doe", contactEmail: "jane.doe@example.com", signature: "Jane Doe" });
 
   if (c) {
@@ -144,8 +145,8 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
         {c.imageSearch && (
           <p className="mt-3 flex items-center gap-2 text-sm text-muted">
             <Icon name="eye" size={15} className="text-accent" />
-            Found on {c.imageSearch.matches.length} page{c.imageSearch.matches.length === 1 ? "" : "s"}
-            {shady > 0 && <span className="font-medium text-overdue">· {shady} shady</span>}
+            Found on {c.imageSearch.matches.length} {c.imageSearch.scope === "instagram" ? "Instagram post" : "page"}{c.imageSearch.matches.length === 1 ? "" : "s"}
+            {c.imageSearch.scope === "instagram" ? <span className="font-medium text-overdue">· all flagged for you</span> : shady > 0 && <span className="font-medium text-overdue">· {shady} shady</span>}
           </p>
         )}
         {c.scrape && !c.imageSearch && (
@@ -204,8 +205,18 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
         ) : branch === "IMAGE_SEARCH" ? (
           <>
             <p className="text-sm leading-relaxed text-muted">
-              Upload the image once. Reclaim checks it for AI provenance, then searches the web for every page it appears on and flags which sites look shady. The file is sent to the search provider for matching and never stored by Reclaim.
+              Upload the image once. Reclaim checks it for AI provenance, then finds every {scope === "instagram" ? "Instagram post" : "page on the web"} using it and flags them for you. The file is sent to the search provider for matching and never stored by Reclaim.
             </p>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-ground p-1" role="tablist" aria-label="Where to search">
+              {[
+                { v: "instagram" as const, label: "Instagram" },
+                { v: "web" as const, label: "Whole web" },
+              ].map((o) => (
+                <button key={o.v} role="tab" aria-selected={scope === o.v} onClick={() => setScope(o.v)} className={`h-9 rounded-lg text-sm font-medium transition-colors ${scope === o.v ? "bg-surface text-ink shadow-[0_0_0_1px_var(--color-line)]" : "text-muted hover:text-ink"}`}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
             <label className={`${btnSecondary} h-12 w-full cursor-pointer justify-start`}>
               <Icon name="plus" size={16} />
               {image ? image.name : "Choose the image"}
@@ -255,7 +266,7 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
           run("report", async () => {
             if (branch === "MANUAL") return (await incidentApi.createReport(title, notes, reporter)).case;
             if (branch === "DISCOVER") return (await incidentApi.discover(query, seed.trim() ? [seed.trim()] : [], reporter)).case;
-            return (await incidentApi.search({ file: image!, title: "Where is my image?", notes, reporter })).case;
+            return (await incidentApi.search({ file: image!, scope, title: scope === "instagram" ? "Where is my image on Instagram?" : "Where is my image?", notes, reporter })).case;
           })
         }
         className={`${btnPrimary} mt-5 w-full sm:w-auto`}
@@ -351,30 +362,36 @@ const RISK_PILL: Record<MatchRisk, { label: string; cls: string; icon: IconName 
   unknown: { label: "Unfamiliar", cls: "bg-ground text-muted border border-line", icon: "info" },
 };
 
+function matchPill(m: ImageMatch): { label: string; cls: string; icon: IconName } {
+  if (!m.flagged) return RISK_PILL[m.risk];
+  if (m.risk === "shady") return { label: m.platformName === "Instagram" ? "Flagged · leak or impersonation" : "Flagged · shady site", cls: "bg-overdue text-white", icon: "flag" };
+  return { label: "Flagged", cls: "bg-overdue-soft text-overdue", icon: "flag" };
+}
+
 function MatchesList({ c, busy, onFile }: { c: CaseReport; busy: string | null; onFile: (ch: ReportChannel, url?: string) => Promise<void> }) {
   const s = c.imageSearch!;
   return (
     <div className="mt-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-xs uppercase tracking-wider text-muted">Where your image appears</p>
+        <p className="text-xs uppercase tracking-wider text-muted">{s.scope === "instagram" ? "Instagram posts using your image" : "Where your image appears"}</p>
         <span className="text-xs text-muted">
           {s.provider === "vision" ? "Google Vision web detection" : "demo fixture"}
           {s.labels.length > 0 && ` · looks like: ${s.labels.join(", ")}`}
         </span>
       </div>
       {s.matches.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">No copies found on the web right now.</p>
+        <p className="mt-2 text-sm text-muted">No copies found on {s.scope === "instagram" ? "Instagram" : "the web"} right now.</p>
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {s.matches.map((m) => {
             const filed = c.reports.find((r) => r.channel === "platform" && r.url === m.pageUrl && r.status !== "failed" && r.status !== "running");
-            const p = RISK_PILL[m.risk];
+            const p = matchPill(m);
             return (
               <li key={m.pageUrl} className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                     <Pill label={p.label} cls={p.cls} icon={p.icon} />
-                    {m.host}
+                    {m.handle ? `@${m.handle}` : m.host}
                     <span className="font-mono text-[10px] uppercase tracking-wider text-muted">{m.matchType} match</span>
                   </p>
                   {m.title && <p className="mt-0.5 truncate text-sm text-muted">{m.title}</p>}

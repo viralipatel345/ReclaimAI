@@ -1,6 +1,6 @@
 // Browser-side calls to /api/incident. In demo mode no session or human token is needed;
 // in production attach `Authorization: Bearer <token>` and `x-human-token` via `headers`.
-import type { AgentSuggestions, CaseReport, CaseStatus, ParasellEscalation, ReportAction, ReportChannel, Reporter, StatusEvent, VerificationResult } from "./types";
+import type { AgentSuggestions, CaseReport, CaseStatus, ParasellEscalation, ReportAction, ReportChannel, Reporter, SearchScope, StatusEvent, VerificationResult } from "./types";
 
 export interface StatusRow {
   id: string;
@@ -36,9 +36,10 @@ const post = <T>(path: string, body: unknown) => call<T>(path, { method: "POST",
 export const incidentApi = {
   createReport: (title: string, notes: string, reporter: Reporter) => post<{ case: CaseReport }>("/report", { title, notes, reporter }),
   discover: (query: string, seedUrls: string[], reporter: Reporter) => post<{ case: CaseReport; decision: "DISCOVER" }>("/discover", { query, seedUrls, reporter }),
-  search(input: { file: File; title: string; notes: string; reporter: Reporter }) {
+  search(input: { file: File; scope: SearchScope; title: string; notes: string; reporter: Reporter }) {
     const fd = new FormData();
     fd.set("file", input.file);
+    fd.set("scope", input.scope);
     fd.set("title", input.title);
     fd.set("notes", input.notes);
     fd.set("reporter", JSON.stringify(input.reporter));

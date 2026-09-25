@@ -244,6 +244,8 @@ model ImageMatch {
   /// full | partial | similar
   matchType    String
   risk         MatchRisk
+  flagged      Boolean    @default(false)
+  handle       String?
   reasons      String[]
   platformName String?
   coveredByAct Boolean?

@@ -4,7 +4,7 @@ import { MAX_MEDIA_BYTES, mediaKindOf } from "@/lib/provenance";
 
 /**
  * Branch C — upload an image, find where it appears on the web, classify each host.
- * multipart/form-data: file (image), title?, notes?, reporter? (JSON). The image is
+ * multipart/form-data: file (image), scope? ("instagram" default | "web"), title?, notes?, reporter? (JSON). The image is
  * provenance-scanned and sent to the search provider; Reclaim keeps only its hash.
  */
 export async function POST(req: Request) {
@@ -25,7 +25,8 @@ export async function POST(req: Request) {
       reporter = null;
     }
     const draft = await createReport(user, { branch: "IMAGE_SEARCH", title, notes, reporter: cleanReporter(reporter, new Date().toISOString()) });
-    const c = await runImageSearch(draft, { buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type });
+    const scope = String(form.get("scope") ?? "instagram") === "web" ? "web" : "instagram";
+    const c = await runImageSearch(draft, { buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type, scope });
     return Response.json({ case: c, search: c.imageSearch }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return gateResponse(err);

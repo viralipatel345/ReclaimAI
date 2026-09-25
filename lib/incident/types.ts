@@ -101,15 +101,22 @@ export interface ImageMatch {
   title?: string;
   matchType: MatchType;
   risk: MatchRisk;
+  /** Surfaced for the user to act on (all Instagram hits; shady hits elsewhere). */
+  flagged: boolean;
   reasons: string[];
   /** Directory platform name when the host is known. */
   platformName?: string;
   coveredByAct?: boolean;
+  /** Instagram: the account the image was found on. */
+  handle?: string;
   foundAt: string;
 }
 
+export type SearchScope = "instagram" | "web";
+
 export interface ImageSearch {
   assetId: string;
+  scope: SearchScope;
   provider: "vision" | "fixture";
   labels: string[];
   matches: ImageMatch[];
