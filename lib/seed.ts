@@ -30,21 +30,11 @@ export function createDemoCase(now: number = Date.now()): Case {
     requests: [],
     evidence: links.map((l) => evidenceFor(l, "logged", l.addedAt)),
     activity: [activity("Case opened. Four links added.", "neutral", isoAt(now - 6 * 60000))],
-    chat: [
-      { role: "agent", at: isoAt(now - 9 * 60000), text: "Hi, I'm here to help you get this taken down. You won't need to describe anything — I only need the links. What name should the requests go out under?" },
-      { role: "user", at: isoAt(now - 8 * 60000), text: "Jordan Ellis" },
-      { role: "agent", at: isoAt(now - 8 * 60000), text: "Thanks, Jordan. What email should platforms reply to? It can be a new address just for this." },
-      { role: "user", at: isoAt(now - 7 * 60000), text: "jordan.ellis@example.com" },
-      { role: "agent", at: isoAt(now - 7 * 60000), text: "Got it. Paste each link below — I'll find the right removal channel for every one. You can also add a Google search for your name." },
-    ],
     nextRecheckAt: isoAt(now + RECHECK_INTERVAL_DAYS * DAY_MS),
     demoPageState: { [DEMO_URLS.reddit]: "live", [DEMO_URLS.x]: "live", [DEMO_URLS.imgvault]: "live" },
   };
   return { ...base, requests: draftRequests(base, signedAt) };
 }
-
-export const GREETING =
-  "Hi. I'm here to help you get this taken down, and you won't need to describe anything — I only need links. What name should the requests go out under?";
 
 /** A fresh, empty case for a real user (created after the adult age check). */
 export function createBlankCase(now: number = Date.now()): Case {
@@ -64,7 +54,6 @@ export function createBlankCase(now: number = Date.now()): Case {
     requests: [],
     evidence: [],
     activity: [],
-    chat: [{ role: "agent", at, text: GREETING }],
     nextRecheckAt: isoAt(now + RECHECK_INTERVAL_DAYS * DAY_MS),
   };
 }

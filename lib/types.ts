@@ -143,12 +143,6 @@ export interface ActivityItem {
   tone: ActivityTone;
 }
 
-export interface ChatMessage {
-  role: "agent" | "user";
-  text: string;
-  at: string;
-}
-
 export interface Attestation {
   text: string;
   signature: string;
@@ -170,7 +164,6 @@ export interface Case {
   requests: TakedownRequest[];
   evidence: EvidenceEntry[];
   activity: ActivityItem[];
-  chat: ChatMessage[];
   /** Reminders and FTC complaint drafts. Optional for cases saved before step 5. */
   outbox?: OutboundMessage[];
   lastRecheckAt?: string;

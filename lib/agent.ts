@@ -7,7 +7,6 @@ import { normalizeUrl } from "./platforms";
 import { resolvePlatform } from "./resolve";
 
 export type ToolName =
-  | "collect_intake"
   | "resolve_platform"
   | "draft_request"
   | "draft_google_removal"
@@ -23,30 +22,6 @@ export type ToolName =
 const str = { type: "string" };
 const bool = { type: "boolean" };
 
-export const INTAKE_SCHEMA = {
-  type: "object",
-  properties: {
-    reply: { ...str, description: "Your next message to the user: warm, brief, at most one question." },
-    legalName: { ...str, description: "Name the requests should be sent under. Empty string if unknown." },
-    contactEmail: { ...str, description: "Email platforms should reply to. Empty string if unknown." },
-    isAdult: {
-      type: "string",
-      enum: ["adult", "minor", "unknown"],
-      description: "\"minor\" if the user says or implies they are under 18 (then stop). \"adult\" if confirmed 18+. Otherwise \"unknown\".",
-    },
-    authorizesPreparation: { ...bool, description: "User wants Reclaim to prepare removal requests." },
-    autoSendConsent: { ...bool, description: "User explicitly agreed that Reclaim may send requests for them." },
-    links: { type: "array", items: str, description: "Every URL the user has shared so far." },
-    attestation: {
-      type: "object",
-      properties: { text: str, signature: { ...str, description: "Typed full-name signature, only if the user typed it." } },
-      required: ["text", "signature"],
-    },
-    missing: { type: "array", items: str, description: "Fields still needed: legalName, contactEmail, links, signature." },
-  },
-  required: ["reply", "legalName", "contactEmail", "isAdult", "authorizesPreparation", "autoSendConsent", "links", "attestation", "missing"],
-} as const;
-
 export const TOOL_DECLARATIONS: Record<ToolName, FunctionDeclaration> = {
   flag_post: {
     name: "flag_post",
@@ -59,11 +34,6 @@ export const TOOL_DECLARATIONS: Record<ToolName, FunctionDeclaration> = {
       },
       required: ["level", "explanation"],
     },
-  },
-  collect_intake: {
-    name: "collect_intake",
-    description: "Record the full, updated intake state and your reply to the user. Call exactly once per turn.",
-    parametersJsonSchema: INTAKE_SCHEMA,
   },
   resolve_platform: {
     name: "resolve_platform",
