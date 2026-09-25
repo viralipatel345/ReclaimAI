@@ -82,6 +82,7 @@ describe("reverseImageSearch", () => {
   it("defaults to the Instagram scope with the Instagram fixture in demo mode, and refuses outside demo", async () => {
     const s = await reverseImageSearch(buf, "ast_1", { demo: true, reporterName: "Jane Doe" });
     expect(s.scope).toBe("instagram");
+    expect(s.matches.find((m) => m.handle === "jane_doe_official_")?.ai).toMatchObject({ verdict: "ai_generated", synthId: "detected" });
     expect(s.provider).toBe("fixture");
     expect(s.matches).toHaveLength(4);
     expect((await reverseImageSearch(buf, "ast_1", { demo: true, scope: "web" })).matches).toHaveLength(6);
@@ -158,13 +159,17 @@ describe("runImageSearch", () => {
     updatedAt: AT,
   };
 
-  it("scans provenance, records the Instagram search with the reporter's name for impersonation checks, and mirrors matches into scrape", async () => {
-    const c = await runImageSearch(draft, { buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]), mimeType: "image/jpeg" }, memStore(), { demo: true });
+  it("scans provenance, falls back to the fixture without a Gemini key, keeps only AI-flagged matches, and mirrors them into scrape", async () => {
+    const c = await runImageSearch(draft, { buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]), mimeType: "image/jpeg", scope: "instagram" }, memStore(), { demo: true });
     expect(c.assets).toHaveLength(1);
-    expect(c.imageSearch).toMatchObject({ scope: "instagram", assetId: c.assets[0].id });
-    expect(c.imageSearch?.matches.map((m) => m.handle)).toEqual(["jane.d.leaks", "jane_doe_official_", "exposed.archive", "citymoments.photo"]);
+    expect(c.imageSearch).toMatchObject({ scope: "instagram", provider: "fixture", onlyAi: true, considered: 4, checked: 4, assetId: c.assets[0].id });
+    expect(c.imageSearch?.matches.map((m) => `${m.handle}:${m.ai?.verdict}`)).toEqual(["jane_doe_official_:ai_generated", "jane.d.leaks:likely_ai"]);
     expect(c.scrape?.query).toBe("reverse image search · Instagram");
     expect(c.scrape?.sources[0].snippet).toMatch(/^flagged · full match/);
-    expect(c.events[0].text).toBe("Found your image on 4 Instagram posts — all flagged for you, 3 with leak or impersonation signals (demo fixture).");
+    expect(c.events[0].text).toBe("Checked 4 of 4 images of your image on Instagram — 2 AI-generated, flagged for you (demo fixture).");
+
+    const web = await runImageSearch(draft, { buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]), mimeType: "image/jpeg" }, memStore(), { demo: true });
+    expect(web.imageSearch).toMatchObject({ scope: "web", considered: 6, checked: 5 });
+    expect(web.imageSearch?.matches.map((m) => `${m.host}:${m.ai?.verdict}`)).toEqual(["leakhub-mirror.example:ai_generated", "instagram.com:likely_ai", "fapboard.to:likely_ai"]);
   });
 });

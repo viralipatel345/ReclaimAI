@@ -108,15 +108,18 @@ export async function aiLookCheck(buffer: Buffer, mimeType: string, gen: VisionG
 }
 
 /** Fold provenance (authoritative) and the visual check (heuristic) into one AiLook. */
-export function combineAiLook(provenance: { verdict: string; summary: string } | null, look: AiLookResult | null): AiLook {
+export function combineAiLook(provenance: { verdict: string; summary: string } | null, look: AiLookResult | null, synthId: AiLook["synthId"] = "unavailable"): AiLook {
+  if (synthId === "detected") {
+    return { verdict: "ai_generated", confidence: 1, signs: ["SynthID watermark detected — made with a Google AI model", ...(look?.signs ?? [])].slice(0, 4), source: look ? "provenance+gemini" : "provenance", synthId };
+  }
   if (provenance?.verdict === "ai_generated") {
-    return { verdict: "ai_generated", confidence: 1, signs: [provenance.summary, ...(look?.signs ?? [])].slice(0, 4), source: look ? "provenance+gemini" : "provenance" };
+    return { verdict: "ai_generated", confidence: 1, signs: [provenance.summary, ...(look?.signs ?? [])].slice(0, 4), source: look ? "provenance+gemini" : "provenance", synthId };
   }
   if (!look) {
-    if (provenance?.verdict === "likely_ai") return { verdict: "likely_ai", confidence: 0.6, signs: [provenance.summary], source: "provenance" };
-    return { verdict: "unchecked", confidence: 0, signs: [], source: "none" };
+    if (provenance?.verdict === "likely_ai") return { verdict: "likely_ai", confidence: 0.6, signs: [provenance.summary], source: "provenance", synthId };
+    return { verdict: "unchecked", confidence: 0, signs: [], source: "none", synthId };
   }
   const confidence = provenance?.verdict === "likely_ai" ? Math.max(look.likelihood, 0.6) : look.likelihood;
   const verdict = confidence >= 0.75 ? "ai_generated" : confidence >= 0.45 ? "likely_ai" : "no_signal";
-  return { verdict, confidence, signs: look.signs.length ? look.signs : look.summary ? [look.summary] : [], source: provenance ? "provenance+gemini" : "gemini-vision" };
+  return { verdict, confidence, signs: look.signs.length ? look.signs : look.summary ? [look.summary] : [], source: provenance ? "provenance+gemini" : "gemini-vision", synthId };
 }

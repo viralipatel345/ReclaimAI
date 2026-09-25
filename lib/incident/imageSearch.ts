@@ -5,7 +5,7 @@
 // Google for matching, not stored by Reclaim); otherwise, in demo mode, a fictional fixture.
 import { isDemoMode } from "../config";
 import { hostOf, matchDirectory } from "../platforms";
-import type { ImageMatch, ImageSearch, MatchRisk, MatchType, SearchScope } from "./types";
+import type { AiLook, ImageMatch, ImageSearch, MatchRisk, MatchType, SearchScope } from "./types";
 
 if (typeof window !== "undefined") throw new Error("lib/incident/imageSearch is server-only");
 
@@ -158,6 +158,16 @@ export const FIXTURE_WEB: WebDetection = {
   visuallySimilarImages: [{ url: "https://pixelpin.example/pin/22a1" }],
 };
 
+/** Demo AI verdicts for the fixture pages (what SynthID / C2PA / Gemini vision would have said). */
+export const FIXTURE_AI: Record<string, AiLook> = {
+  "https://leakhub-mirror.example/gallery/jane-d-leaked": { verdict: "ai_generated", confidence: 0.93, signs: ["skin texture unnaturally smooth", "earrings don't match each other"], source: "gemini-vision", synthId: "not_detected" },
+  "https://www.instagram.com/jane_doe_official_/": { verdict: "ai_generated", confidence: 1, signs: ["SynthID watermark detected — made with a Google AI model"], source: "provenance", synthId: "detected" },
+  "https://www.instagram.com/p/C8xKq2LtP1a/": { verdict: "likely_ai", confidence: 0.61, signs: ["fingers partly merged with the railing"], source: "gemini-vision", synthId: "not_detected" },
+  "https://fapboard.to/t/8812": { verdict: "likely_ai", confidence: 0.58, signs: ["text on the poster behind is garbled"], source: "gemini-vision", synthId: "not_detected" },
+};
+const FIXTURE_CLEAN: AiLook = { verdict: "no_signal", confidence: 0.12, signs: [], source: "gemini-vision", synthId: "not_detected" };
+const FIXTURE_UNCHECKED: AiLook = { verdict: "unchecked", confidence: 0, signs: ["image not exposed without login"], source: "none", synthId: "unavailable" };
+
 export interface SearchOptions {
   scope?: SearchScope;
   reporterName?: string;
@@ -180,5 +190,18 @@ export async function reverseImageSearch(buffer: Buffer, assetId: string, opts: 
   } else {
     throw new Error("Reverse image search needs GOOGLE_VISION_API_KEY");
   }
-  return { assetId, scope, provider, labels: (detection.bestGuessLabels ?? []).map((l) => l.label), matches: toMatches(detection, searchedAt, scope, opts.reporterName), searchedAt };
+  let matches = toMatches(detection, searchedAt, scope, opts.reporterName);
+  if (provider === "fixture") matches = matches.map((m) => ({ ...m, ai: FIXTURE_AI[m.pageUrl] ?? (m.matchType === "similar" ? FIXTURE_UNCHECKED : FIXTURE_CLEAN) }));
+  return {
+    assetId,
+    scope,
+    provider,
+    labels: (detection.bestGuessLabels ?? []).map((l) => l.label),
+    onlyAi: false,
+    considered: matches.length,
+    checked: matches.filter((m) => m.ai && m.ai.verdict !== "unchecked").length,
+    synthIdActive: false,
+    matches,
+    searchedAt,
+  };
 }

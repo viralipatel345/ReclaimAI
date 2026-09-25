@@ -127,7 +127,7 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   const [query, setQuery] = useState("");
   const [seed, setSeed] = useState("");
   const [image, setImage] = useState<File | null>(null);
-  const [scope, setScope] = useState<SearchScope>("instagram");
+  const [scope, setScope] = useState<SearchScope>("web");
   const [subject, setSubject] = useState("");
   const [reporter, setReporter] = useState<Reporter>({ legalName: "Jane Doe", contactEmail: "jane.doe@example.com", signature: "Jane Doe" });
 
@@ -144,10 +144,23 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
           </p>
         )}
         {c.imageSearch && (
-          <p className="mt-3 flex items-center gap-2 text-sm text-muted">
-            <Icon name="eye" size={15} className="text-accent" />
-            Found on {c.imageSearch.matches.length} {c.imageSearch.scope === "instagram" ? "Instagram post" : "page"}{c.imageSearch.matches.length === 1 ? "" : "s"}
-            {c.imageSearch.scope === "instagram" ? <span className="font-medium text-overdue">· all flagged for you</span> : shady > 0 && <span className="font-medium text-overdue">· {shady} shady</span>}
+          <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <Icon name="sparkle" size={15} className="text-accent" />
+            {c.imageSearch.subject && <span className="font-medium text-ink">{c.imageSearch.subject.name}</span>}
+            {c.imageSearch.onlyAi ? (
+              <>
+                <span className={c.imageSearch.matches.length ? "font-medium text-overdue" : ""}>
+                  {c.imageSearch.matches.length} AI-generated image{c.imageSearch.matches.length === 1 ? "" : "s"}
+                </span>
+                <span>· checked {c.imageSearch.checked} of {c.imageSearch.considered} {c.imageSearch.scope === "instagram" ? "on Instagram" : "across the web"}</span>
+                <span>· SynthID {c.imageSearch.synthIdActive ? "on" : "off"}</span>
+              </>
+            ) : (
+              <>
+                Found on {c.imageSearch.matches.length} page{c.imageSearch.matches.length === 1 ? "" : "s"}
+                {shady > 0 && <span className="font-medium text-overdue">· {shady} shady</span>}
+              </>
+            )}
           </p>
         )}
         {c.scrape && !c.imageSearch && (
@@ -206,12 +219,12 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
         ) : branch === "IMAGE_SEARCH" ? (
           <>
             <p className="text-sm leading-relaxed text-muted">
-              Upload the image once. Reclaim checks it for AI provenance, then finds every {scope === "instagram" ? "Instagram post" : "page on the web"} using it and flags them for you. The file is sent to the search provider for matching and never stored by Reclaim.
+              Upload the image once. Reclaim identifies who it shows, finds where their likeness appears {scope === "instagram" ? "on Instagram" : "across the web"}, checks every image with Google SynthID, C2PA and Gemini vision, and shows you only the AI-generated ones. The file is sent to the search provider for matching and never stored by Reclaim.
             </p>
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-ground p-1" role="tablist" aria-label="Where to search">
               {[
-                { v: "instagram" as const, label: "Instagram" },
                 { v: "web" as const, label: "Whole web" },
+                { v: "instagram" as const, label: "Instagram only" },
               ].map((o) => (
                 <button key={o.v} role="tab" aria-selected={scope === o.v} onClick={() => setScope(o.v)} className={`h-9 rounded-lg text-sm font-medium transition-colors ${scope === o.v ? "bg-surface text-ink shadow-[0_0_0_1px_var(--color-line)]" : "text-muted hover:text-ink"}`}>
                   {o.label}
@@ -223,12 +236,10 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
               {image ? image.name : "Choose the image"}
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
             </label>
-            {scope === "instagram" && (
-              <label className="block text-sm font-medium">
-                Who is in the image? <span className="font-normal text-muted">(optional — for public figures; leave blank and Gemini will try to recognise them)</span>
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. a well-known public figure" className={`${input} mt-1.5`} />
-              </label>
-            )}
+            <label className="block text-sm font-medium">
+              Who is in the image? <span className="font-normal text-muted">(optional — for public figures; leave blank and Gemini will try to recognise them)</span>
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. a well-known public figure" className={`${input} mt-1.5`} />
+            </label>
             <label className="block text-sm font-medium">
               Anything the agent should know <span className="font-normal text-muted">(optional — never what the image shows)</span>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${input} mt-1.5 resize-y`} />
@@ -374,7 +385,7 @@ function AiPill({ ai }: { ai: AiLook }) {
   if (ai.verdict === "no_signal") return <Pill label="no AI signs" cls="bg-removed-soft text-removed" icon="check" />;
   return (
     <Pill
-      label={`${ai.verdict === "ai_generated" ? "AI-generated" : "possibly AI"} · ${Math.round(ai.confidence * 100)}%`}
+      label={ai.synthId === "detected" ? "AI-generated · SynthID" : `${ai.verdict === "ai_generated" ? "AI-generated" : "possibly AI"} · ${Math.round(ai.confidence * 100)}%`}
       cls={ai.verdict === "ai_generated" ? "bg-overdue text-white" : "bg-overdue-soft text-overdue"}
       icon="sparkle"
     />
@@ -392,14 +403,20 @@ function MatchesList({ c, busy, onFile }: { c: CaseReport; busy: string | null; 
   return (
     <div className="mt-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-xs uppercase tracking-wider text-muted">{s.scope === "instagram" ? "Instagram posts using your image" : "Where your image appears"}</p>
+        <p className="text-xs uppercase tracking-wider text-muted">
+          {s.onlyAi ? `AI-generated images${s.subject ? ` of ${s.subject.name}` : ""} ${s.scope === "instagram" ? "on Instagram" : "on the web"}` : s.scope === "instagram" ? "Instagram posts using your image" : "Where your image appears"}
+        </p>
         <span className="text-xs text-muted">
           {s.provider === "vision" ? "Google Vision web detection" : s.provider === "gemini" ? "Gemini + Google Search" : "demo fixture"}
-          {s.subject ? ` · ${s.subject.name}${s.subject.source === "gemini" ? ` (recognised, ${Math.round(s.subject.confidence * 100)}%)` : ""}` : s.labels.length > 0 ? ` · looks like: ${s.labels.join(", ")}` : ""}
+          {s.subject?.source === "gemini" ? ` · recognised (${Math.round(s.subject.confidence * 100)}%)` : ""}
+          {s.onlyAi ? ` · SynthID ${s.synthIdActive ? "on" : "off"}` : s.labels.length > 0 ? ` · looks like: ${s.labels.join(", ")}` : ""}
         </span>
       </div>
       {s.matches.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">No copies found on {s.scope === "instagram" ? "Instagram" : "the web"} right now.</p>
+        <p className="mt-2 flex items-center gap-2 text-sm text-muted">
+          <Icon name="check" size={15} className="text-removed" />
+          {s.considered === 0 ? `No copies found ${s.scope === "instagram" ? "on Instagram" : "on the web"} right now.` : `Checked ${s.checked} of ${s.considered} images — none showed AI signs.`}
+        </p>
       ) : (
         <ul className="mt-2 divide-y divide-line">
           {s.matches.map((m) => {

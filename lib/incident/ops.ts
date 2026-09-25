@@ -6,7 +6,7 @@ import { newId } from "../ids";
 import { submitToParasell } from "../parasell/client";
 import { scanMedia, scanUrl, type ScanOutput } from "../provenance";
 import { reverseImageSearch } from "./imageSearch";
-import { NoPublicFigureError, searchInstagramForFigure } from "./instagramSearch";
+import { NoPublicFigureError, searchForFigure } from "./instagramSearch";
 import { analyzeCase, inputFromCase } from "./orchestrator";
 import { runDiscoverScrape } from "./scrape";
 import { incidentStore, statusEvent, transition, type IncidentStore } from "./store";
@@ -87,27 +87,28 @@ export async function runImageSearch(
   c: CaseReport,
   input: { buffer: Buffer; mimeType: string; scope?: SearchScope; subjectName?: string },
   store: IncidentStore = incidentStore,
-  opts: { demo?: boolean; fetchImpl?: typeof fetch; figureSearch?: typeof searchInstagramForFigure } = {},
+  opts: { demo?: boolean; fetchImpl?: typeof fetch; figureSearch?: typeof searchForFigure } = {},
 ): Promise<CaseReport> {
-  const scope = input.scope ?? "instagram";
+  const scope = input.scope ?? "web";
+  const where = scope === "instagram" ? "on Instagram" : "across the web";
   const scan = await scanMedia({ buffer: input.buffer, mimeType: input.mimeType, caseId: c.id });
   let next = attachScans(c, [scan]);
   const aiFlag = scan.verification.verdict === "ai_generated" || scan.verification.verdict === "likely_ai";
-  next = await transition(next, "SCANNING", `Image fingerprinted and checked for AI provenance${aiFlag ? " — flagged" : ""}. Searching ${scope === "instagram" ? "Instagram" : "the web"} for it.`, store);
+  next = await transition(next, "SCANNING", `Image fingerprinted and checked for AI provenance${aiFlag ? " — flagged" : ""}. Searching ${where} for AI-generated copies.`, store);
 
   let search: ImageSearch | null = null;
   let note = "";
-  if (scope === "instagram" && (input.subjectName?.trim() || hasGeminiKey())) {
+  if (input.subjectName?.trim() || hasGeminiKey()) {
     try {
-      search = await (opts.figureSearch ?? searchInstagramForFigure)(input.buffer, input.mimeType, scan.asset.id, { subjectName: input.subjectName, reporterName: c.reporter?.legalName });
-      next = await transition(next, "SCANNING", `Identified ${search.subject?.name}${search.subject?.source === "gemini" ? ` (${Math.round((search.subject.confidence ?? 0) * 100)}% confident)` : ""} — searched Instagram and checked ${search.matches.filter((m) => m.ai && m.ai.verdict !== "unchecked").length} post image${search.matches.filter((m) => m.ai && m.ai.verdict !== "unchecked").length === 1 ? "" : "s"} for AI generation.`, store);
+      search = await (opts.figureSearch ?? searchForFigure)(input.buffer, input.mimeType, scan.asset.id, { scope, subjectName: input.subjectName, reporterName: c.reporter?.legalName });
+      next = await transition(next, "SCANNING", `Identified ${search.subject?.name}${search.subject?.source === "gemini" ? ` (${Math.round((search.subject.confidence ?? 0) * 100)}% confident)` : ""} — found ${search.considered} page${search.considered === 1 ? "" : "s"} ${where}, checked ${search.checked} image${search.checked === 1 ? "" : "s"} with SynthID${search.synthIdActive ? "" : " (detector off)"}, C2PA and Gemini vision.`, store);
     } catch (err) {
       const demo = opts.demo ?? isDemoMode();
       if (!(err instanceof NoPublicFigureError) || !demo) throw err;
       note = " No public figure recognised, so this is the demo fixture.";
     }
   }
-  search ??= await reverseImageSearch(input.buffer, scan.asset.id, { ...opts, scope, reporterName: c.reporter?.legalName });
+  search ??= keepOnlyAi(await reverseImageSearch(input.buffer, scan.asset.id, { ...opts, scope, reporterName: c.reporter?.legalName }));
   const scrape = {
     id: newId("scr"),
     caseId: c.id,
@@ -121,18 +122,22 @@ export async function runImageSearch(
   next = { ...next, imageSearch: search, scrape };
 
   const n = search.matches.length;
-  const shady = search.matches.filter((m) => m.risk === "shady").length;
-  const ai = search.matches.filter((m) => m.ai?.verdict === "ai_generated" || m.ai?.verdict === "likely_ai").length;
   const suffix = (search.provider === "fixture" ? " (demo fixture)" : "") + note;
+  const who = search.subject ? ` of ${search.subject.name}` : " of your image";
   const line =
-    n === 0
-      ? `No ${search.subject ? `Instagram posts featuring ${search.subject.name}` : `copies of your image on ${scope === "instagram" ? "Instagram" : "the web"}`} found right now. Reclaim can re-check later.`
-      : search.subject
-        ? `Found ${n} Instagram post${n === 1 ? "" : "s"} featuring ${search.subject.name} — ${ai} look${ai === 1 ? "s" : ""} AI-generated, all flagged for you${suffix}.`
-        : scope === "instagram"
-          ? `Found your image on ${n} Instagram post${n === 1 ? "" : "s"} — all flagged for you, ${shady} with leak or impersonation signals${suffix}.`
-          : `Found your image on ${n} page${n === 1 ? "" : "s"}: ${shady} shady, ${search.matches.filter((m) => m.risk === "normal").length} known platforms, ${search.matches.filter((m) => m.risk === "unknown").length} unfamiliar${suffix}.`;
+    search.considered === 0
+      ? `No copies${who} found ${where} right now. Reclaim can re-check later${suffix}.`
+      : n === 0
+        ? `Checked ${search.checked} of ${search.considered} images${who} ${where} — none showed AI signs${suffix}.`
+        : `Checked ${search.checked} of ${search.considered} images${who} ${where} — ${n} AI-generated, flagged for you${suffix}.`;
   return transition(next, "SCANNING", line, store);
+}
+
+/** Non-Gemini providers (fixture, Vision) don't check images themselves: keep only AI-flagged matches and fill the counts. */
+export function keepOnlyAi(s: ImageSearch): ImageSearch {
+  const rank = { ai_generated: 0, likely_ai: 1, no_signal: 2, unchecked: 3 } as const;
+  const matches = s.matches.filter((m) => m.ai?.verdict === "ai_generated" || m.ai?.verdict === "likely_ai").sort((a, b) => rank[a.ai!.verdict] - rank[b.ai!.verdict] || b.ai!.confidence - a.ai!.confidence);
+  return { ...s, onlyAi: true, considered: s.matches.length, checked: s.matches.filter((m) => m.ai && m.ai.verdict !== "unchecked").length, matches };
 }
 
 export async function recordScans(c: CaseReport, outputs: ScanOutput[], store: IncidentStore = incidentStore): Promise<CaseReport> {

@@ -123,6 +123,8 @@ export interface AiLook {
   signs: string[];
   /** What produced the verdict. */
   source: "provenance" | "gemini-vision" | "provenance+gemini" | "none";
+  /** Google SynthID watermark check result. */
+  synthId: "detected" | "not_detected" | "unavailable";
 }
 
 export type SearchScope = "instagram" | "web";
@@ -131,9 +133,17 @@ export interface ImageSearch {
   assetId: string;
   scope: SearchScope;
   provider: "vision" | "fixture" | "gemini";
-  /** Public figure the search was run for (Instagram scope). */
+  /** Public figure the search was run for. */
   subject?: { name: string; confidence: number; source: "user" | "gemini" };
   labels: string[];
+  /** Only AI-flagged matches are kept when true; counts below describe what was looked at. */
+  onlyAi: boolean;
+  /** Pages found before filtering. */
+  considered: number;
+  /** Images actually fetched and checked. */
+  checked: number;
+  /** Whether the SynthID detector was active for this search. */
+  synthIdActive: boolean;
   matches: ImageMatch[];
   searchedAt: string;
 }
