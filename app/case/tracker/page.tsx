@@ -7,6 +7,15 @@ import { counts, displayStatus, linksFor, type DisplayStatus } from "@/lib/caseO
 import { DEADLINE_HOURS, HOUR_MS } from "@/lib/config";
 import { clockTime, hoursMinutes, shortDateTime } from "@/lib/time";
 import { useCase } from "@/lib/useCase";
+import { useChase } from "@/lib/useChase";
+import { needsEscalation } from "@/lib/escalation";
+import { prepareSubmission } from "@/lib/submission";
+import { useDemoMode } from "@/components/Providers";
+import { ReplyModal } from "@/components/ReplyModal";
+import { SubmissionPanel } from "@/components/Submission";
+import { Modal } from "@/components/ui";
+import { useState } from "react";
+import type { OutboundMessage } from "@/lib/types";
 import { downloadEvidencePdf } from "@/lib/evidencePdf";
 import { useNow } from "@/lib/useNow";
 import type { Case, TakedownRequest } from "@/lib/types";
@@ -14,6 +23,7 @@ import type { Case, TakedownRequest } from "@/lib/types";
 export default function Tracker() {
   const c = useCase();
   const now = useNow();
+  useChase(c, now, useDemoMode());
   if (c === undefined || !now) return <Loading />;
   if (!c) return <p className="text-muted">No active case.</p>;
   return <TrackerView c={c} now={now} />;
@@ -21,7 +31,9 @@ export default function Tracker() {
 
 function TrackerView({ c, now }: { c: Case; now: number }) {
   const t = counts(c, now);
-  const overdue = c.requests.filter((r) => displayStatus(r, now) === "overdue");
+  const overdue = c.requests.filter((r) => needsEscalation(r, now));
+  const [replyFor, setReplyFor] = useState<TakedownRequest | null>(null);
+  const [openMsg, setOpenMsg] = useState<OutboundMessage | null>(null);
   const nothingSent = c.requests.every((r) => !r.sentAt);
   return (
     <div>
@@ -49,11 +61,20 @@ function TrackerView({ c, now }: { c: Case; now: number }) {
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid grid-cols-1 content-start gap-5 md:grid-cols-2">
           {c.requests.map((r) => (
-            <ClockCard key={r.id} r={r} c={c} now={now} />
+            <ClockCard key={r.id} r={r} c={c} now={now} onReply={() => setReplyFor(r)} onOpenMessage={setOpenMsg} />
           ))}
         </div>
         <SidePanel c={c} overdue={overdue} />
       </div>
+      {replyFor && <ReplyModal r={replyFor} onClose={() => setReplyFor(null)} />}
+      {openMsg && (
+        <Modal title={openMsg.subject} onClose={() => setOpenMsg(null)}>
+          {(() => {
+            const r = c.requests.find((x) => x.id === openMsg.requestId)!;
+            return <SubmissionPanel s={prepareSubmission(c, { ...r, subject: openMsg.subject, body: openMsg.body })} />;
+          })()}
+        </Modal>
+      )}
     </div>
   );
 }
@@ -67,7 +88,8 @@ function Chip({ tone, n, label }: { tone: "removed" | "accent" | "overdue"; n: n
   );
 }
 
-function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) {
+function ClockCard({ r, c, now, onReply, onOpenMessage }: { r: TakedownRequest; c: Case; now: number; onReply: () => void; onOpenMessage: (m: OutboundMessage) => void }) {
+  const pendingReminder = (c.outbox ?? []).find((m) => m.kind === "reminder" && m.requestId === r.id && !m.sentAt);
   const status: DisplayStatus = displayStatus(r, now);
   const sent = r.sentAt ? new Date(r.sentAt).getTime() : 0;
   const elapsed = sent ? (now - sent) / (DEADLINE_HOURS * HOUR_MS) : 0;
@@ -75,7 +97,7 @@ function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) 
   const isOverdue = status === "overdue";
   const isRemoved = status === "removed";
 
-  const frame = isOverdue ? "border-2 border-overdue-line" : isRemoved ? "border border-removed/30" : "border border-line";
+  const frame = isOverdue || status === "rejected" ? "border-2 border-overdue-line" : isRemoved ? "border border-removed/30" : "border border-line";
   return (
     <article className={`flex flex-col rounded-2xl bg-surface p-5 ${frame}`} aria-label={`${r.platformName}: ${status}`}>
       <header className="flex items-start justify-between gap-3">
@@ -100,6 +122,11 @@ function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) 
               {hoursMinutes(new Date(r.removedAt!).getTime() - sent)}
             </p>
           </>
+        ) : status === "rejected" ? (
+          <>
+            <p className="text-xs uppercase tracking-wider text-overdue">Rejected</p>
+            <p className="mt-1 font-display text-[32px] font-semibold leading-tight text-overdue">Escalate to the FTC</p>
+          </>
         ) : r.deadlineAt ? (
           <>
             <p className={`text-xs uppercase tracking-wider ${isOverdue ? "text-overdue" : "text-muted"}`}>{isOverdue ? "Past deadline" : "Time left"}</p>
@@ -117,12 +144,22 @@ function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) 
       </div>
 
       <div className="mt-5">
-        <ProgressBar value={isRemoved || isOverdue ? 1 : elapsed} tone={isRemoved ? "removed" : isOverdue ? "overdue" : "accent"} />
+        <ProgressBar value={isRemoved || isOverdue || status === "rejected" ? 1 : elapsed} tone={isRemoved ? "removed" : isOverdue || status === "rejected" ? "overdue" : "accent"} />
       </div>
       {r.remindersDrafted.length > 0 && !isRemoved && (
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
           <Icon name="mail" size={13} /> Reminders sent at {r.remindersDrafted.map((h) => `${h}h`).join(" and ")}
         </p>
+      )}
+      {r.reply && (
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          <span className="font-medium text-ink">Their reply:</span> {r.reply.summary}
+        </p>
+      )}
+      {pendingReminder && (
+        <button onClick={() => onOpenMessage(pendingReminder)} className="mt-3 flex items-center gap-1.5 text-left text-xs font-medium text-accent hover:underline">
+          <Icon name="send" size={13} /> {pendingReminder.hourMark}-hour reminder ready — send it
+        </button>
       )}
       {r.acknowledgedAt && !isRemoved && (
         <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
@@ -139,7 +176,14 @@ function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) 
                 ? `Sent ${shortDateTime(r.sentAt)} · due ${shortDateTime(r.deadlineAt)}`
                 : "Clock starts when sent"}
         </span>
-        <ChannelTag channel={r.channel} />
+        <span className="flex items-center gap-3">
+          {r.sentAt && !isRemoved && r.status !== "rejected" && (
+            <button onClick={onReply} className="font-medium text-accent hover:underline">
+              Paste a reply
+            </button>
+          )}
+          <ChannelTag channel={r.channel} />
+        </span>
       </footer>
     </article>
   );
@@ -149,6 +193,7 @@ const DOT = { neutral: "bg-panel-muted", accent: "bg-[#8E9BE0]", removed: "bg-[#
 
 function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
   const names = overdue.map((r) => r.platformName).join(" and ");
+  const filed = c.requests.filter((r) => r.escalatedAt);
   return (
     <aside className="h-fit space-y-6 rounded-2xl bg-panel p-6 text-white">
       {overdue.length > 0 ? (
@@ -157,18 +202,25 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
             <Icon name="flag" size={14} /> Escalation ready
           </p>
           <p className="mt-3 font-display text-2xl font-semibold leading-snug">
-            {names} missed {overdue.length === 1 ? "its" : "their"} deadline. Your FTC complaint is drafted.
+            {overdue.every((r) => r.status === "rejected")
+              ? `${names} rejected your request. Your FTC complaint is drafted.`
+              : `${names} missed ${overdue.length === 1 ? "its" : "their"} deadline. Your FTC complaint is drafted.`}
           </p>
-          <button className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-medium text-ink hover:bg-white/90" title="Wired up in step 5">
+          <Link
+            href={`/case/ftc?request=${overdue[0].id}`}
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-medium text-ink hover:bg-white/90"
+          >
             Review &amp; file complaint <Icon name="arrow" size={16} />
-          </button>
+          </Link>
         </div>
       ) : (
         <div>
           <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-panel-muted">
             <Icon name="eye" size={14} /> Agent watching
           </p>
-          <p className="mt-3 font-display text-2xl font-semibold leading-snug">You don’t have to check on this. We will.</p>
+          <p className="mt-3 font-display text-2xl font-semibold leading-snug">
+            {filed.length ? `FTC complaint filed about ${filed.map((r) => r.platformName).join(" and ")}.` : "You don’t have to check on this. We will."}
+          </p>
           <p className="mt-2 text-sm text-panel-muted">Next re-check {shortDateTime(c.nextRecheckAt)}. You’ll only hear from us when something changes.</p>
         </div>
       )}

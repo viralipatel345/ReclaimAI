@@ -1,11 +1,11 @@
 // Pure case transitions shared by client and server. No I/O here.
-import { DEADLINE_HOURS, HOUR_MS } from "./config";
+import { DEADLINE_HOURS } from "./config";
 import { fingerprint } from "./hash";
 import { newId } from "./ids";
 import { hostOf, matchDirectory, nameFromSearchUrl, unresolvedPlatform } from "./platforms";
 import { renderGoogleRemoval, renderTakedownRequest } from "./templates";
 import type { ActivityItem, ActivityTone, Case, CaseLink, EvidenceEntry, ResolvedPlatform, TakedownRequest } from "./types";
-import { addHours, hoursMinutes, isoAt } from "./time";
+import { addHours } from "./time";
 
 export type DisplayStatus = "draft" | "ready" | "in_progress" | "acknowledged" | "removed" | "overdue" | "rejected" | "unclear";
 
@@ -110,53 +110,6 @@ export function markSent(c: Case, requestIds: string[], at: string, simulated: b
     activity(`Request sent to ${r.platformName}${simulated ? " (demo)" : ""}. 48-hour clock started.`, "accent", at),
   );
   return { ...c, requests, evidence: [...c.evidence, ...evidence], activity: [...acts, ...c.activity] };
-}
-
-/**
- * Demo: jump to a realistic mid-case state.
- * Reddit → removed 19h 42m after sending. Google → acknowledged. X → overdue.
- */
-export function simulatePlatformResponses(c: Case, now: number): Case {
-  if (c.requests.some((r) => r.removedAt || r.acknowledgedAt)) return c; // already simulated
-  const shift = (r: TakedownRequest, sentMsAgo: number): TakedownRequest => {
-    const sentAt = isoAt(now - sentMsAgo);
-    return { ...r, status: r.status === "ready" || r.status === "draft" ? "sent" : r.status, sentAt, deadlineAt: addHours(sentAt, DEADLINE_HOURS), simulated: true };
-  };
-  const newActs: ActivityItem[] = [];
-  const requests = c.requests.map((r) => {
-    if (r.platformId === "reddit") {
-      const s = shift(r, 21 * HOUR_MS + 5 * 60000);
-      const removedAt = isoAt(new Date(s.sentAt!).getTime() + 19 * HOUR_MS + 42 * 60000);
-      newActs.push(activity(`Reddit removed the post — ${hoursMinutes(19 * HOUR_MS + 42 * 60000)} after your request.`, "removed", removedAt));
-      return { ...s, status: "removed" as const, removedAt };
-    }
-    if (r.platformId === "google-search") {
-      const s = shift(r, 30 * HOUR_MS + 18 * 60000);
-      const acknowledgedAt = isoAt(new Date(s.sentAt!).getTime() + 6 * HOUR_MS + 11 * 60000);
-      newActs.push(activity("Google acknowledged your removal request.", "accent", acknowledgedAt));
-      return { ...s, status: "acknowledged" as const, acknowledgedAt };
-    }
-    if (r.platformId === "x") {
-      const s = shift(r, 50 * HOUR_MS + 14 * 60000 + 9000);
-      newActs.push(activity("X missed its 48-hour deadline. FTC complaint drafted.", "overdue", s.deadlineAt!));
-      newActs.push(activity("Reminder sent to X at the 44-hour mark.", "neutral", addHours(s.sentAt!, 44)));
-      newActs.push(activity("Reminder sent to X at the 24-hour mark.", "neutral", addHours(s.sentAt!, 24)));
-      return { ...s, remindersDrafted: [24, 44] };
-    }
-    if (r.platformId === "imgvault") return shift(r, 9 * HOUR_MS + 31 * 60000);
-    return r;
-  });
-  const replyEvidence = requests.flatMap((r) => {
-    const at = r.removedAt ?? r.acknowledgedAt;
-    if (!at) return [];
-    const note = r.removedAt ? "Platform reported the content removed." : "Platform acknowledged the request.";
-    return linksFor(c, r).map((l) => evidenceFor(l, "reply", at, { sentAt: r.sentAt, note }));
-  });
-  const sentActs = requests
-    .filter((r) => r.sentAt)
-    .map((r) => activity(`Request sent to ${r.platformName}. 48-hour clock started.`, "accent", r.sentAt!));
-  const all = [...newActs, ...sentActs].sort((a, b) => b.at.localeCompare(a.at));
-  return { ...c, requests, activity: all, evidence: [...c.evidence, ...replyEvidence] };
 }
 
 export function counts(c: Case, now: number) {

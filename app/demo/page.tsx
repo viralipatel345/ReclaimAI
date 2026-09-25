@@ -1,11 +1,12 @@
 "use client";
-// Presenter shortcuts (demo mode only): /demo?preset=fresh|sent|simulated
+// Presenter shortcuts (demo mode only): /demo?preset=fresh|sent|simulated|escalation
 // Jumps straight to a known state — useful for rehearsals and mid-demo recovery.
 import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDemoMode } from "@/components/Providers";
 import { Loading } from "@/components/ui";
-import { markSent, simulatePlatformResponses } from "@/lib/caseOps";
+import { markSent } from "@/lib/caseOps";
+import { simulatePlatformResponses } from "@/lib/demo";
 import { createDemoCase } from "@/lib/seed";
 import { setCase } from "@/lib/useCase";
 
@@ -19,6 +20,7 @@ const PRESETS = {
     },
   },
   simulated: { path: "/case/tracker", build: () => simulatePlatformResponses(createDemoCase(), Date.now()) },
+  escalation: { path: "/case/ftc", build: () => simulatePlatformResponses(createDemoCase(), Date.now()) },
 } as const;
 
 function Apply() {

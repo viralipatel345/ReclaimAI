@@ -84,11 +84,15 @@ export const TOOL_DECLARATIONS: Record<ToolName, FunctionDeclaration> = {
   },
   parse_reply: {
     name: "parse_reply",
-    description: "Classify a platform's emailed reply.",
+    description: "Classify a platform's emailed reply to a removal request.",
     parametersJsonSchema: {
       type: "object",
-      properties: { status: { type: "string", enum: ["acknowledged", "removed", "rejected", "unclear"] }, summary: str },
-      required: ["status", "summary"],
+      properties: {
+        status: { type: "string", enum: ["acknowledged", "removed", "rejected", "unclear"] },
+        summary: { ...str, description: "One plain sentence describing what the platform said. No names, emails or links." },
+        asksForImages: { ...bool, description: "True if the reply asks the person to send, upload or attach images, videos or screenshots." },
+      },
+      required: ["status", "summary", "asksForImages"],
     },
   },
   recheck: {
@@ -102,13 +106,13 @@ export const TOOL_DECLARATIONS: Record<ToolName, FunctionDeclaration> = {
   },
   draft_reminder: {
     name: "draft_reminder",
-    description: "Write a short, firm reminder to a platform at the 24h or 44h mark.",
-    parametersJsonSchema: { type: "object", properties: { requestId: str, text: str }, required: ["requestId", "text"] },
+    description: "Write ONE short, firm, courteous sentence for a reminder to a platform at the 24h or 44h mark.",
+    parametersJsonSchema: { type: "object", properties: { text: str }, required: ["text"] },
   },
   draft_ftc_complaint: {
     name: "draft_ftc_complaint",
-    description: "Write a factual summary for an FTC complaint about a platform that missed its 48-hour deadline.",
-    parametersJsonSchema: { type: "object", properties: { requestId: str, summary: str }, required: ["requestId", "summary"] },
+    description: "Write a 2-3 sentence first-person factual summary for an FTC complaint, using only the facts given.",
+    parametersJsonSchema: { type: "object", properties: { summary: str }, required: ["summary"] },
   },
 };
 
