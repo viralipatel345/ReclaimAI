@@ -107,7 +107,7 @@ export function markSent(c: Case, requestIds: string[], at: string, simulated: b
     c.links.filter((l) => r.linkIds.includes(l.id)).map((l) => evidenceFor(l, "sent", at, { sentAt: at })),
   );
   const acts = sent.map((r) =>
-    activity(`Request sent to ${r.platformName}${simulated ? " (demo — not actually sent)" : ""}. 48-hour clock started.`, "accent", at),
+    activity(`Request sent to ${r.platformName}${simulated ? " (demo)" : ""}. 48-hour clock started.`, "accent", at),
   );
   return { ...c, requests, evidence: [...c.evidence, ...evidence], activity: [...acts, ...c.activity] };
 }
@@ -117,6 +117,7 @@ export function markSent(c: Case, requestIds: string[], at: string, simulated: b
  * Reddit → removed 19h 42m after sending. Google → acknowledged. X → overdue.
  */
 export function simulatePlatformResponses(c: Case, now: number): Case {
+  if (c.requests.some((r) => r.removedAt || r.acknowledgedAt)) return c; // already simulated
   const shift = (r: TakedownRequest, sentMsAgo: number): TakedownRequest => {
     const sentAt = isoAt(now - sentMsAgo);
     return { ...r, status: r.status === "ready" || r.status === "draft" ? "sent" : r.status, sentAt, deadlineAt: addHours(sentAt, DEADLINE_HOURS), simulated: true };
@@ -145,11 +146,17 @@ export function simulatePlatformResponses(c: Case, now: number): Case {
     if (r.platformId === "imgvault") return shift(r, 9 * HOUR_MS + 31 * 60000);
     return r;
   });
+  const replyEvidence = requests.flatMap((r) => {
+    const at = r.removedAt ?? r.acknowledgedAt;
+    if (!at) return [];
+    const note = r.removedAt ? "Platform reported the content removed." : "Platform acknowledged the request.";
+    return linksFor(c, r).map((l) => evidenceFor(l, "reply", at, { sentAt: r.sentAt, note }));
+  });
   const sentActs = requests
     .filter((r) => r.sentAt)
     .map((r) => activity(`Request sent to ${r.platformName}. 48-hour clock started.`, "accent", r.sentAt!));
   const all = [...newActs, ...sentActs].sort((a, b) => b.at.localeCompare(a.at));
-  return { ...c, requests, activity: all };
+  return { ...c, requests, activity: all, evidence: [...c.evidence, ...replyEvidence] };
 }
 
 export function counts(c: Case, now: number) {

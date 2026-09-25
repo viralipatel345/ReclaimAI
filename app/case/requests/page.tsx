@@ -39,8 +39,8 @@ function RequestsView({ c }: { c: Case }) {
       </h1>
       <p className="mt-2 max-w-[62ch] text-muted">Each request uses a fixed legal template with your signature. Only the greeting is written by AI.</p>
 
-      <div className="mt-8 grid gap-6 2xl:grid-cols-[1fr_340px] xl:grid-cols-[1fr_320px]">
-        <div className="grid content-start gap-5 md:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-1 content-start gap-5 md:grid-cols-2">
           {c.requests.map((r) => (
             <RequestCard key={r.id} r={r} onRead={() => setReading(r)} onEdit={() => setEditing(r)} />
           ))}
@@ -65,7 +65,7 @@ function RequestsView({ c }: { c: Case }) {
 
       {reading && (
         <Modal title={`Request to ${reading.platformName}`} onClose={() => setReading(null)}>
-          <dl className="mb-4 grid grid-cols-[72px_1fr] gap-y-1.5 text-sm">
+          <dl className="mb-4 grid grid-cols-[72px_minmax(0,1fr)] gap-y-1.5 text-sm">
             <dt className="text-muted">To</dt>
             <dd className="font-mono text-[13px]">{reading.target ?? "Site contact page"}</dd>
             <dt className="text-muted">Subject</dt>

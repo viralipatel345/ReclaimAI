@@ -64,7 +64,9 @@ export function DemoPanel() {
       >
         <Icon name="trash" size={16} /> Reset demo
       </button>
-      <p className="px-2 pt-2 text-[11px] text-panel-muted">Shift+D to hide</p>
+      <p className="px-2 pt-2 text-[11px] leading-relaxed text-panel-muted">
+        Shift+D to hide · Recovery URLs: <span className="font-mono">/demo?preset=fresh|sent|simulated</span>
+      </p>
     </div>
   );
 }
