@@ -1,0 +1,6 @@
+{
+  "name": "Reclaim — Support for Survivors",
+  "description": "Quiet autonomous advocacy and statutory enforcement under the U.S. TAKE IT DOWN Act to remove nonconsensual imagery within 48 hours.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
