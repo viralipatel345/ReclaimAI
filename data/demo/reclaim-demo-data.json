@@ -311,5 +311,39 @@
         "event": "X misses the legal deadline. FTC complaint drafted for Jordan to review"
       }
     ]
-  }
+  },
+  "caseStudies": [
+    {
+      "id": "meloni",
+      "real": true,
+      "name": "Giorgia Meloni",
+      "role": "Prime Minister of Italy",
+      "usage": "Real public case. Use only these sourced facts as context. She is not a Reclaim user: never invent platforms, URLs, timelines or outcomes for her, and never show images.",
+      "facts": [
+        {
+          "label": "2020",
+          "text": "Deepfake porn videos with her face were posted to a US porn site"
+        },
+        {
+          "label": "Months",
+          "text": "They stayed online for several months"
+        },
+        {
+          "label": "Millions",
+          "text": "They were viewed millions of times"
+        },
+        {
+          "label": "€100,000",
+          "text": "Damages she is seeking, pledged to a fund for women who are victims of domestic violence"
+        }
+      ],
+      "court": "Two men from Sardinia, a father and son, were charged with defamation in Sassari. She testified that it is a form of violence against women. The father's proceedings were suspended in 2024; the son's continue. No verdict found as of 2026-09-25.",
+      "sources": [
+        "https://www.aol.com/news/intolerable-giorgia-meloni-tells-court-192834060.html",
+        "https://www.forbes.com/sites/maryroeloffs/2024/03/20/italian-prime-minister-seeks-over-100000-after-deepfake-porn-videos-were-viewed-millions-of-times/",
+        "https://www.unionesarda.it/en/sardinia/fake-hard-videos-with-giorgia-meloni39-s-face-the-prime-minister-testifies-in-sassari-remotely-arnhobux"
+      ],
+      "sourceCheck": "AOL (Telegraph, 8 Oct 2024) and L'Unione Sarda (1 Jul 2024) opened in a browser on 2026-09-25. Forbes shows a bot wall to the test browser."
+    }
+  ]
 }
