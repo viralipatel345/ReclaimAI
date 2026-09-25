@@ -1,9 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import DATA from '@data/demo/reclaim-demo-data.json';
 import {
   ArrowRight, Bell, Check, FileText, Globe, Lock, LogOut, MessageCircle, Phone,
   RotateCcw, Scale, Search, Send, Sparkles, Timer, Route, Fingerprint, ScanSearch, UserCheck, ImagePlus,
 } from 'lucide-react';
+
+// Demo content comes from data/demo/reclaim-demo-data.json: real law, stats, platforms; fictional case.
+const CASE = DATA.demoCase;
+const FINDINGS = CASE.findings;
+const REAL_PLATFORMS = DATA.platforms.filter((p) => !p.fictional);
+const STAT = (v: string) => DATA.stats.find((x) => x.value === v)!;
+const statusTone = (st: string) => st === 'Removed' ? 'bg-[#E7F6EC] text-[#166534]' : st === 'Overdue' ? 'bg-[#0E1116] text-white' : 'bg-[#FDECEA] text-[#B3130F]';
 
 // Brand: white ground, ink #0E1116, one bright red #E1261C (deep #B3130F), heavy Plus Jakarta Sans.
 const EASE = [0.2, 0.7, 0.2, 1] as const;
@@ -55,7 +63,7 @@ const SCRIPT: Bubble[] = [
   { from: 'ai', text: "Hi, I'm Reclaim. Tell me what happened, in your own words." },
   { from: 'me', text: 'someone posted a fake nude of me' },
   { from: 'ai', text: "I'm so sorry. It's not your fault. I'm searching for every copy now." },
-  { from: 'ai', text: 'Found 3 copies', card: true },
+  { from: 'ai', text: `Found ${FINDINGS.length} places`, card: true },
   { from: 'me', text: 'take them all down' },
   { from: 'ai', text: 'Sent. Platforms have 48 hours by law. I’ll text you as each one comes down.' },
 ];
@@ -98,8 +106,8 @@ function PhoneChat() {
                 {b.card ? (
                   <div className="w-[190px]">
                     <p className="mb-1.5 font-semibold">{b.text}</p>
-                    {[['forum thread', 'Platform'], ['image host', 'Platform'], ['search result', 'De-list']].map(([s, a]) => (
-                      <div key={s} className="flex justify-between border-t border-black/5 py-1 text-[11px]"><span>{s}</span><span className="font-semibold text-[#B3130F]">{a}</span></div>
+                    {FINDINGS.map((f) => (
+                      <div key={f.platform} className="flex justify-between gap-2 border-t border-black/5 py-1 text-[11px]"><span>{f.platform}</span><span className="font-semibold text-[#B3130F]">{f.platform === 'Google Search' ? 'Remove results' : 'Legal request'}</span></div>
                     ))}
                   </div>
                 ) : b.text}
@@ -154,7 +162,7 @@ function Hero() {
             Take it down.<br /><span className="text-[#E1261C]">Take it back.</span>
           </h1>
           <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-[#4B5563]">
-            99% of people targeted by deepfake porn are women, and only 4% ever take it to police. Reclaim&rsquo;s agents find every copy and file the legal removal requests for you. Platforms then have 48 hours.
+            99% of deepfake porn depicts women, and most never report it. Reclaim&rsquo;s agents find every copy and file the legal removal requests for you. By law, platforms then have 48 hours.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <a href="#try" className="inline-flex h-13 items-center gap-2 rounded-full bg-[#E1261C] px-7 py-3.5 font-semibold text-white shadow-[0_12px_28px_-10px_rgba(225,38,28,0.8)] transition hover:-translate-y-0.5 hover:bg-[#B3130F]">
@@ -176,9 +184,9 @@ function Hero() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.15, ease: EASE }} className="relative">
-          <FloatCard className="-left-6 top-16" delay={1.2} icon={<Bell size={15} />} title="3 copies found" text="On a forum, an image host, and search." />
-          <FloatCard className="-right-4 top-[46%]" delay={1.8} icon={<Send size={15} />} title="Requests sent" text="48-hour legal clock started." />
-          <FloatCard className="bottom-10 -left-2" delay={2.4} icon={<Check size={15} />} title="Removed from search" text="1 of 3 done in 19 hours." />
+          <FloatCard className="-left-6 top-16" delay={1.2} icon={<Bell size={15} />} title={`${FINDINGS.length} places found`} text={FINDINGS.map((f) => f.platform).join(', ')} />
+          <FloatCard className="-right-4 top-[46%]" delay={1.8} icon={<Send size={15} />} title="Requests approved" text="48-hour legal clocks started." />
+          <FloatCard className="bottom-10 -left-2" delay={2.4} icon={<Check size={15} />} title="Reddit removed it" text="19h 42m after the request." />
           <PhoneChat />
         </motion.div>
       </div>
@@ -218,10 +226,10 @@ function StepPanel({ k }: { k: string }) {
   );
   if (k === 'decide') return (
     <div className="space-y-3">
-      {[['forum thread', 'Legal request to platform', <Scale key="a" size={14} />], ['image host', 'Legal request to platform', <Scale key="b" size={14} />], ['threats in DMs', 'Report to police', <FileText key="c" size={14} />], ['profile photo swapped', 'Put the original back', <RotateCcw key="d" size={14} />]].map(([s, a, ic], i) => (
-        <motion.div key={s as string} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.12 }} className={row}>
-          <span className="font-semibold">{s}</span>
-          <span className="flex items-center gap-1.5 rounded-full bg-[#FDECEA] px-3 py-1 text-xs font-semibold text-[#B3130F]">{ic}{a}</span>
+      {FINDINGS.map((f, i) => (
+        <motion.div key={f.platform} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.12 }} className={row}>
+          <span><span className="block font-semibold">{f.platform}</span><span className="block text-xs text-[#6B7280]">{f.where} · found by {f.foundBy.toLowerCase()}</span></span>
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#FDECEA] px-3 py-1 text-xs font-semibold text-[#B3130F]"><Scale size={14} />{f.action}</span>
         </motion.div>
       ))}
     </div>
@@ -229,8 +237,13 @@ function StepPanel({ k }: { k: string }) {
   if (k === 'act') return (
     <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6B7280]">Ready for your okay</p>
-      <p className="mt-2 font-bold">Removal request · forum thread</p>
-      <p className="mt-2 text-sm leading-relaxed text-[#4B5563]">Under the TAKE IT DOWN Act, I request removal of the non-consensual intimate image at the link below within 48 hours&hellip;</p>
+      <p className="mt-2 font-bold">Removal request · {FINDINGS[0].platform}</p>
+      <p className="mt-2 text-sm text-[#4B5563]">Every request includes what the TAKE IT DOWN Act requires:</p>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {DATA.law.validRequestMustInclude.map((x) => (
+          <li key={x} className="flex items-start gap-2 text-sm"><Check size={15} className="mt-0.5 shrink-0 text-[#E1261C]" />{x}</li>
+        ))}
+      </ul>
       <div className="mt-4 flex gap-2">
         <span className="inline-flex items-center gap-2 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white"><Check size={15} /> Approve and send</span>
         <span className="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-[#4B5563]">Edit first</span>
@@ -251,12 +264,12 @@ function TrackPanel() {
   };
   return (
     <div className="space-y-3">
-      {[['forum thread', 31.2, 'Sent'], ['image host', 40.6, 'Acknowledged'], ['search result', 0, 'Removed']].map(([s, h, st]) => (
-        <div key={s as string} className="flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-          <span className="font-semibold">{s}</span>
-          <span className="flex items-center gap-3">
-            {st !== 'Removed' && <span className="font-mono text-sm tabular-nums text-[#4B5563]">{left(h as number)}</span>}
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${st === 'Removed' ? 'bg-[#E7F6EC] text-[#166534]' : 'bg-[#FDECEA] text-[#B3130F]'}`}>{st as string}</span>
+      {FINDINGS.map((f) => (
+        <div key={f.platform} className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+          <span><span className="block font-semibold">{f.platform}</span><span className="block text-xs text-[#6B7280]">{f.detail}</span></span>
+          <span className="flex shrink-0 items-center gap-3">
+            {f.status === 'Sent' && <span className="font-mono text-sm tabular-nums text-[#4B5563]">{left(31.2)}</span>}
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(f.status)}`}>{f.status}</span>
           </span>
         </div>
       ))}
@@ -312,7 +325,7 @@ function Process() {
 /* ---------- How it searches ---------- */
 
 const METHODS = [
-  { icon: <Fingerprint size={20} />, name: 'Fingerprint', where: 'On your phone', finds: 'Exact and near-exact copies', how: 'Your image is turned into a digital fingerprint on your own device. Only the fingerprint is shared with platforms, the same method StopNCII uses to remove 300,000+ images.' },
+  { icon: <Fingerprint size={20} />, name: 'Fingerprint', where: 'On your phone', finds: 'Exact and near-exact copies', how: 'Your image is turned into a digital fingerprint on your own device. Only the fingerprint is shared with platforms, the same method StopNCII uses. It has created over 434,000 fingerprints for 182,000 people.' },
   { icon: <ScanSearch size={20} />, name: 'Reverse image search', where: 'Google Cloud Vision', finds: 'Copies and edits anywhere public', how: 'Searches the open web for pages showing your image or a close variation. Checked, then deleted. Never stored.' },
   { icon: <UserCheck size={20} />, name: 'Face match', where: 'Verified users only', finds: 'Deepfakes of you', how: 'A deepfake is a new image, so only your face can find it. Face match only runs after you verify it\u2019s you, so no one can search for someone else.' },
 ];
@@ -401,16 +414,19 @@ function TryIt() {
           )}
           {phase === 'done' && (
             <motion.div key="done" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mt-10 rounded-3xl bg-[#F5F6F8] p-6 text-left">
-              <p className="font-[800] text-lg">3 places found. Here&rsquo;s what I&rsquo;d do.</p>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-[800] text-lg">{FINDINGS.length} places found. Here&rsquo;s what I&rsquo;d do.</p>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#6B7280]">Example case · {CASE.survivor} is fictional</span>
+              </div>
               <div className="mt-4 space-y-2">
-                {[['discussion forum · fingerprint match', 'Legal request to platform'], ['image host · reverse search', 'Legal request to platform'], ['deepfake video · face match', 'Legal request + police report']].map(([s, a], n) => (
-                  <motion.div key={s} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: n * 0.15 }} className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
-                    <span className="font-semibold">{s}</span><span className="text-sm font-semibold text-[#B3130F]">{a}</span>
+                {FINDINGS.map((f, n) => (
+                  <motion.div key={f.platform} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: n * 0.15 }} className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3">
+                    <span><span className="block font-semibold">{f.platform} · {f.where}</span><span className="block text-xs text-[#6B7280]">Found by {f.foundBy.toLowerCase()}</span></span><span className="shrink-0 text-sm font-semibold text-[#B3130F]">{f.action}</span>
                   </motion.div>
                 ))}
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white">Review all 3</span>
+                <span className="rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white">Review all {FINDINGS.length}</span>
                 <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold">Call a helpline</span>
                 <button onClick={() => { setPhase('idle'); setText(''); }} className="rounded-full px-4 py-2 text-sm font-semibold text-[#4B5563]">Start over</button>
               </div>
@@ -462,13 +478,34 @@ function Agents() {
   );
 }
 
+/* ---------- Where requests go ---------- */
+
+function WhereItGoes() {
+  return (
+    <section className="py-16">
+      <div className="mx-auto max-w-[1240px] px-5 md:px-8">
+        <p className="text-sm font-semibold text-[#E1261C]">Where requests go</p>
+        <h2 className={`${display} mt-3 max-w-[20ch] text-4xl leading-[1.02] md:text-6xl`}>Straight to each platform&rsquo;s own removal channel.</h2>
+        <div className="mt-8 flex flex-wrap gap-3">
+          {REAL_PLATFORMS.map((p, i) => (
+            <motion.a key={p.id} href={p.channel === 'email' ? `mailto:${p.target}` : p.target} target="_blank" rel="noopener noreferrer" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.04 }} className="flex items-center gap-2 rounded-full border border-black/10 px-5 py-3 font-semibold hover:border-[#E1261C] hover:text-[#B3130F]">
+              {p.name}<span className="text-xs font-medium text-[#6B7280]">{p.channel === 'email' ? 'email' : 'form'}</span>
+            </motion.a>
+          ))}
+        </div>
+        <p className="mt-5 text-sm text-[#6B7280]">Every link above was opened and checked on 25 Sep 2026.</p>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Stats + closing ---------- */
 
 function Stats() {
   return (
     <section className="bg-[#0E1116] py-20 text-white">
       <div className="mx-auto grid max-w-[1240px] gap-10 px-5 sm:grid-cols-2 md:px-8 lg:grid-cols-4">
-        {[['99%', 'of people targeted in deepfake porn are women.'], ['96%', 'of deepfakes online are sexually explicit and made without consent.'], ['4%', 'of people who called a helpline about image abuse also went to police.'], ['48h', 'is how long platforms now have by federal law to remove it.']].map(([n, t]) => (
+        {['98%', '99%', '4%', '48h'].map((v) => [v, STAT(v).text + '.']).map(([n, t]) => (
           <motion.div key={n} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: EASE }}>
             <p className={`${display} text-6xl text-[#E1261C] md:text-7xl`}>{n}</p>
             <p className="mt-3 max-w-[30ch] text-white/70">{t}</p>
@@ -499,7 +536,11 @@ function Footer() {
     <footer className="bg-white">
       <div className="mx-auto flex max-w-[1240px] flex-col gap-3 px-5 py-8 text-sm text-[#6B7280] md:flex-row md:items-center md:justify-between md:px-8">
         <p className="flex items-center gap-2"><Mark size={22} /> Not legal advice. Reclaim prepares requests you send.</p>
-        <p className="flex items-center gap-2"><Phone size={14} /> CCRI image abuse helpline, 24/7: <a className="font-semibold text-[#0E1116]" href="tel:18448782274">1-844-878-2274</a></p>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="flex items-center gap-2"><Phone size={14} /> CCRI helpline, 24/7: <a className="font-semibold text-[#0E1116]" href="tel:18448782274">1-844-878-2274</a></span>
+          <a className="font-semibold text-[#0E1116] hover:text-[#B3130F]" href="https://stopncii.org/" target="_blank" rel="noopener noreferrer">StopNCII</a>
+          <a className="font-semibold text-[#0E1116] hover:text-[#B3130F]" href="https://takeitdown.ncmec.org/" target="_blank" rel="noopener noreferrer">Under 18? NCMEC Take It Down</a>
+        </p>
       </div>
     </footer>
   );
@@ -515,6 +556,7 @@ export function Landing({ onQuickExit }: { onQuickExit: () => void }) {
         <HowItSearches />
         <TryIt />
         <Agents />
+        <WhereItGoes />
         <Stats />
         <Closing />
       </main>
