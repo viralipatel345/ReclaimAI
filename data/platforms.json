@@ -1,0 +1,95 @@
+[
+  {
+    "id": "reddit",
+    "name": "Reddit",
+    "hosts": ["reddit.com", "redd.it"],
+    "channel": "form",
+    "target": "https://www.reddit.com/report",
+    "policyUrl": "https://support.reddithelp.com/hc/en-us/articles/360043513411",
+    "coveredByAct": true
+  },
+  {
+    "id": "x",
+    "name": "X",
+    "hosts": ["x.com", "twitter.com"],
+    "channel": "form",
+    "target": "https://help.x.com/en/forms/safety-and-sensitive-content",
+    "policyUrl": "https://help.x.com/en/rules-and-policies/intimate-media",
+    "coveredByAct": true
+  },
+  {
+    "id": "instagram",
+    "name": "Instagram",
+    "hosts": ["instagram.com", "instagr.am"],
+    "channel": "form",
+    "target": "https://help.instagram.com/contact/",
+    "coveredByAct": true
+  },
+  {
+    "id": "facebook",
+    "name": "Facebook",
+    "hosts": ["facebook.com", "fb.com", "fb.watch"],
+    "channel": "form",
+    "target": "https://www.facebook.com/help/contact/",
+    "coveredByAct": true
+  },
+  {
+    "id": "tiktok",
+    "name": "TikTok",
+    "hosts": ["tiktok.com"],
+    "channel": "form",
+    "target": "https://www.tiktok.com/legal/report/feedback",
+    "coveredByAct": true
+  },
+  {
+    "id": "youtube",
+    "name": "YouTube",
+    "hosts": ["youtube.com", "youtu.be"],
+    "channel": "form",
+    "target": "https://support.google.com/youtube/answer/142443",
+    "coveredByAct": true
+  },
+  {
+    "id": "discord",
+    "name": "Discord",
+    "hosts": ["discord.com", "discord.gg", "discordapp.com"],
+    "channel": "form",
+    "target": "https://dis.gd/request",
+    "coveredByAct": true
+  },
+  {
+    "id": "telegram",
+    "name": "Telegram",
+    "hosts": ["t.me", "telegram.me", "telegram.org"],
+    "channel": "email",
+    "target": "abuse@telegram.org",
+    "coveredByAct": true
+  },
+  {
+    "id": "pornhub",
+    "name": "Pornhub",
+    "hosts": ["pornhub.com"],
+    "channel": "form",
+    "target": "https://www.pornhub.com/content-removal",
+    "coveredByAct": true
+  },
+  {
+    "id": "google-search",
+    "name": "Google Search",
+    "hosts": ["google.com"],
+    "pathPrefix": "/search",
+    "channel": "form",
+    "target": "https://support.google.com/websearch/troubleshooter/3111061",
+    "policyUrl": "https://support.google.com/websearch/answer/6302812",
+    "coveredByAct": false
+  },
+  {
+    "id": "imgvault",
+    "name": "ImgVault",
+    "hosts": ["imgvault.example"],
+    "channel": "email",
+    "target": "takedown@imgvault.example",
+    "coveredByAct": true,
+    "fictional": true
+  }
+]
