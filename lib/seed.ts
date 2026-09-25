@@ -3,6 +3,7 @@ import { DEMO_URLS, fixtureTitle } from "@/data/fixtures";
 import { HOUR_MS, RECHECK_INTERVAL_DAYS, DAY_MS } from "./config";
 import { activity, draftRequests, evidenceFor, makeLink } from "./caseOps";
 import { ATTESTATION_TEXT } from "./templates";
+import { newId } from "./ids";
 import type { Case } from "./types";
 import { isoAt } from "./time";
 
@@ -39,4 +40,30 @@ export function createDemoCase(now: number = Date.now()): Case {
     nextRecheckAt: isoAt(now + RECHECK_INTERVAL_DAYS * DAY_MS),
   };
   return { ...base, requests: draftRequests(base, signedAt) };
+}
+
+export const GREETING =
+  "Hi. I'm here to help you get this taken down, and you won't need to describe anything — I only need links. What name should the requests go out under?";
+
+/** A fresh, empty case for a real user (created after the adult age check). */
+export function createBlankCase(now: number = Date.now()): Case {
+  const at = isoAt(now);
+  return {
+    id: newId("case"),
+    isDemo: false,
+    createdAt: at,
+    legalName: "",
+    contactEmail: "",
+    isAdult: true,
+    authorizesPreparation: true,
+    autoSendConsent: false,
+    reviewEachBeforeSending: false,
+    attestation: { text: ATTESTATION_TEXT, signature: "" },
+    links: [],
+    requests: [],
+    evidence: [],
+    activity: [],
+    chat: [{ role: "agent", at, text: GREETING }],
+    nextRecheckAt: isoAt(now + RECHECK_INTERVAL_DAYS * DAY_MS),
+  };
 }
