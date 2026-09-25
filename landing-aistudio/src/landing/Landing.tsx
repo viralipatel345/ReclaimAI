@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import DATA from '@data/demo/reclaim-demo-data.json';
 import {
   ArrowRight, Bell, Check, FileText, Globe, Lock, LogOut, MessageCircle, Phone,
-  RotateCcw, Scale, Search, Send, Sparkles, Timer, Route, Fingerprint, ScanSearch, UserCheck, ImagePlus,
+  RotateCcw, Scale, Search, Send, Sparkles, Timer, Route, Fingerprint, ScanSearch, UserCheck, ImagePlus, BadgeCheck,
 } from 'lucide-react';
 
 // Demo content comes from data/demo/reclaim-demo-data.json: real law, stats, platforms; fictional case.
@@ -335,6 +335,7 @@ const METHODS = [
   { icon: <Fingerprint size={20} />, name: 'Fingerprint', where: 'On your phone', finds: 'Exact and near-exact copies', how: 'Your image is turned into a digital fingerprint on your own device. Only the fingerprint is shared with platforms, the same method StopNCII uses. It has created over 434,000 fingerprints for 182,000 people.' },
   { icon: <ScanSearch size={20} />, name: 'Reverse image search', where: 'Google Cloud Vision', finds: 'Copies and edits anywhere public', how: 'Searches the open web for pages showing your image or a close variation. Checked, then deleted. Never stored.' },
   { icon: <UserCheck size={20} />, name: 'Face match', where: 'Verified users only', finds: 'Deepfakes of you', how: 'A deepfake is a new image, so only your face can find it. Face match only runs after you verify it\u2019s you, so no one can search for someone else.' },
+  { icon: <BadgeCheck size={20} />, name: 'Watermark check', where: 'Google SynthID', finds: 'Proof a fake was made with Google AI', how: 'Images made with Google models carry an invisible SynthID watermark. If a fake carries one, that is evidence it is synthetic, attached to the report. Detector access is still limited, so this ships when Google opens it.', soon: true },
 ];
 
 function HowItSearches() {
@@ -343,12 +344,15 @@ function HowItSearches() {
       <div className="mx-auto max-w-[1240px] px-5 md:px-8">
         <p className="flex items-center gap-3 text-sm font-semibold text-[#6B7280]"><span className="h-px w-8 bg-[#E1261C]" />How it searches</p>
         <h2 className={`${display} mt-3 max-w-[20ch] text-4xl leading-[1.02] md:text-6xl`}>A link finds one copy. Your image finds the rest.</h2>
-        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {METHODS.map((m, i) => (
             <motion.div key={m.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }} transition={{ delay: i * 0.1, duration: 0.6, ease: EASE }} whileHover={{ y: -4 }} className="rounded-3xl bg-[#F5F6F8] p-6">
               <div className="flex items-center justify-between">
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-[#E1261C]">{m.icon}</span>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4B5563]">{m.where}</span>
+                <span className="flex items-center gap-1.5">
+                  {m.soon && <span className="rounded-full bg-[#0E1116] px-2.5 py-1 text-[11px] font-semibold text-white">Next</span>}
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4B5563]">{m.where}</span>
+                </span>
               </div>
               <p className="mt-5 text-xl font-[800] tracking-[-0.02em]">{m.name}</p>
               <p className="mt-1 text-sm font-semibold text-[#B3130F]">Finds: {m.finds}</p>
