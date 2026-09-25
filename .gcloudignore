@@ -1,0 +1,14 @@
+# Files never uploaded to Cloud Build. Secrets are passed at runtime (Secret Manager).
+.env*
+!env.example
+.git
+.gitignore
+.next
+node_modules
+coverage
+audit
+landing-aistudio
+brand
+*.log
+.DS_Store
+.vercel
