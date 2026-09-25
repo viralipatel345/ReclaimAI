@@ -4,9 +4,9 @@ import { deleteServerCopy } from "./useCase";
 import { disconnectGmail } from "./google";
 
 export function quickExit() {
-  disconnectGmail(); // revoke the Google token too
+  disconnectGmail();
   const id = localMirror.load()?.id;
   if (id) deleteServerCopy(id);
   localMirror.clear();
-  window.location.replace(QUICK_EXIT_URL);
+  window.location.replace("/");
 }

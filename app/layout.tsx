@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
-import { Fraunces, Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Instrument_Sans, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { AppHeader, LegalNotice } from "@/components/AppHeader";
 import { Providers } from "@/components/Providers";
 import { isDemoMode, publicAppConfig } from "@/lib/config";
@@ -9,6 +9,7 @@ import "./globals.css";
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], weight: ["600"], style: ["normal", "italic"] });
 const instrument = Instrument_Sans({ variable: "--font-instrument", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"] });
+const plusJakarta = Plus_Jakarta_Sans({ variable: "--font-plus-jakarta", subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
   title: "Reclaim",
@@ -29,7 +30,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   await connection(); // read DEMO_MODE at request time, not build time
   const demo = isDemoMode();
   return (
-    <html lang="en" className={`${fraunces.variable} ${instrument.variable} ${jetbrains.variable} h-full`}>
+    <html lang="en" className={`${fraunces.variable} ${instrument.variable} ${jetbrains.variable} ${plusJakarta.variable} h-full`}>
       <body className="flex min-h-full flex-col">
         <Providers demoMode={demo} config={publicAppConfig()}>
           <AppHeader />

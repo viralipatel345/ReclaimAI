@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ground: #f5f2ee;
+  --color-ground: #F5F6F8;
   --color-surface: #ffffff;
-  --color-ink: #1d1b20;
-  --color-muted: #5e5a63;
-  --color-line: #e4ded6;
-  --color-accent: #3446a8;
-  --color-accent-hover: #23317e;
-  --color-accent-soft: #e9ecf8;
-  --color-removed: #1e6b4f;
-  --color-removed-soft: #e2f0e8;
-  --color-overdue: #8a1c1c;
-  --color-overdue-line: #a32a2a;
-  --color-overdue-soft: #f8e0de;
-  --color-panel: #1d1b20;
-  --color-panel-line: #34313a;
-  --color-panel-muted: #a9a4ae;
+  --color-ink: #0E1116;
+  --color-muted: #6B7280;
+  --color-line: #E5E7EB;
+  --color-accent: #E1261C;
+  --color-accent-hover: #B3130F;
+  --color-accent-soft: #FDECEA;
+  --color-removed: #166534;
+  --color-removed-soft: #E7F6EC;
+  --color-overdue: #B3130F;
+  --color-overdue-line: #E1261C;
+  --color-overdue-soft: #FDECEA;
+  --color-panel: #0E1116;
+  --color-panel-line: #1F2937;
+  --color-panel-muted: #9CA3AF;
   /* Status tones readable on the dark panel */
   --color-panel-removed: #6fc39d;
   --color-panel-overdue: #f3a6a0;
-  --color-panel-accent: #aeb8f0;
+  --color-panel-accent: #FF6B62;
   --color-panel-cached: #e7c46f;
 
   /* Type scale */
@@ -44,12 +44,12 @@
 
 html,
 body {
-  background: var(--color-ground);
+  background: #ffffff;
   color: var(--color-ink);
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-plus-jakarta), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
