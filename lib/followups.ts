@@ -31,7 +31,8 @@ const defaultDrafter: Drafter = async (kind, facts) => {
       ? `Write one sentence for the ${facts.hourMark}-hour reminder (${(facts.hourMark ?? 24) >= 44 ? "the deadline is only hours away" : "about a day remains"}).`
       : `Write the summary paragraph for my FTC complaint about ${facts.platformName}. Name the platform.`;
   const run = await runAgent<{ text?: string; summary?: string }>({
-    model: kind === "reminder" ? MODELS.fast : MODELS.primary,
+    // Flash for both: the summary is short, factual and constrained; latency matters on stage.
+    model: MODELS.fast,
     systemInstruction: FOLLOWUP_PROMPT,
     contents: [{ role: "user", parts: [{ text: `Facts (JSON): ${JSON.stringify(facts)}\n\n${ask}` }] }],
     tools: [tool],

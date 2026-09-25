@@ -134,5 +134,6 @@ export function fastForward(c: Case, now: number): Case {
       [DEMO_URLS.x]: "live", // re-uploaded after X removed it
     },
     demoNameResults: [{ url: DEMO_URLS.nameResult, title: "ImgVault — k9Pw2Qz" }],
+    demoBanner: { label: "3 days later", at: isoAt(now) },
   };
 }

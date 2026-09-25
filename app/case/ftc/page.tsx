@@ -15,6 +15,7 @@ import { shortDateTime } from "@/lib/time";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useNow } from "@/lib/useNow";
 import { useChase } from "@/lib/useChase";
+import { Typewriter } from "@/components/Typewriter";
 import { postJson } from "@/lib/api";
 import { cachedFollowUp } from "@/lib/demoCache";
 import { recordAi } from "@/lib/aiStatus";
@@ -49,24 +50,32 @@ function Ftc() {
   return <Complaint c={c} r={r} now={now} />;
 }
 
+/** Summaries that arrived while this page was open get typed out once. */
+const justTyped = new Set<string>();
+
 function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) {
   const demo = useDemoMode();
   const draft = ftcComplaintFor(c, r.id);
-  const aiSummary = draft?.aiSource === "gemini" ? draft.aiText : undefined;
+  const aiSummary = draft?.aiText;
   const complaint = renderFtcComplaint(ftcInput(c, r, now, aiSummary));
   const requested = useRef(false);
-  const polishing = !!draft && draft.aiSource !== "gemini";
+  const polishing = !!draft && draft.aiSource !== "gemini" && !draft.aiTried;
 
   // Gemini writes the summary paragraph from timeline facts only.
   useEffect(() => {
-    if (!draft || draft.aiSource === "gemini" || requested.current) return;
+    if (!draft || draft.aiSource === "gemini" || draft.aiTried || requested.current) return;
     requested.current = true;
     postJson<{ text: string; source: "gemini" | "cached" | "template" }>("/api/followup", { kind: "ftc", facts: timelineFacts(c, r, now) }, 14000).then((out) => {
       // Server unreachable in demo: the recorded summary; otherwise keep the template text.
       const cached = demo ? cachedFollowUp("ftc", r.platformName) : undefined;
       const text = out?.text || cached || draft.aiText;
-      recordAi("FTC summary", out?.source === "gemini" ? "live" : out?.text || cached ? "cached" : "template");
-      updateCase((x) => setOutboxAiText(x, draft.id, text));
+      const fromGemini = !!(out?.text || cached);
+      recordAi("FTC summary", out?.source === "gemini" ? "live" : fromGemini ? "cached" : "template");
+      justTyped.add(draft.id);
+      updateCase((x) => {
+        const next = setOutboxAiText(x, draft.id, text, undefined, fromGemini ? "gemini" : "template");
+        return { ...next, outbox: next.outbox?.map((m) => (m.id === draft.id ? { ...m, aiTried: true } : m)) };
+      });
     });
   }, [c, r, draft, now, demo]);
 
@@ -98,7 +107,24 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
                   {polishing ? "Gemini is drafting a summary from your evidence log…" : draft?.aiSource === "gemini" ? "Summary drafted by Gemini from your evidence log. Edit anything before filing." : "Summary from the template."}
                 </p>
               )}
-              <p className="mt-3 whitespace-pre-line break-words text-[15px] leading-relaxed">{s.text}</p>
+              {i === 1 ? (
+                <div className="mt-3 space-y-4 text-[15px] leading-relaxed">
+                  {polishing ? (
+                    <div className="space-y-2 py-1" aria-label="Gemini is writing the summary">
+                      <div className="anim-shimmer h-3.5 w-full rounded bg-line" />
+                      <div className="anim-shimmer h-3.5 w-11/12 rounded bg-line" />
+                      <div className="anim-shimmer h-3.5 w-3/5 rounded bg-line" />
+                    </div>
+                  ) : (
+                    <p className="break-words">
+                      <Typewriter text={complaint.summary} animate={!!draft && justTyped.has(draft.id)} />
+                    </p>
+                  )}
+                  <p className="break-words text-muted">{s.text.slice(s.text.indexOf("This appears"))}</p>
+                </div>
+              ) : (
+                <p className="mt-3 whitespace-pre-line break-words text-[15px] leading-relaxed">{s.text}</p>
+              )}
             </section>
           ))}
           <div className="flex flex-wrap gap-3">
