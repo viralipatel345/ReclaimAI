@@ -1,6 +1,6 @@
 // Browser-side calls to /api/incident. In demo mode no session or human token is needed;
 // in production attach `Authorization: Bearer <token>` and `x-human-token` via `headers`.
-import type { AgentSuggestions, CaseReport, CaseStatus, ParasellEscalation, StatusEvent, VerificationResult } from "./types";
+import type { AgentSuggestions, CaseReport, CaseStatus, ParasellEscalation, ReportAction, ReportChannel, Reporter, StatusEvent, VerificationResult } from "./types";
 
 export interface StatusRow {
   id: string;
@@ -34,8 +34,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 const post = <T>(path: string, body: unknown) => call<T>(path, { method: "POST", body: JSON.stringify(body) });
 
 export const incidentApi = {
-  createReport: (title: string, notes: string) => post<{ case: CaseReport }>("/report", { title, notes }),
-  discover: (query: string, seedUrls: string[]) => post<{ case: CaseReport; decision: "DISCOVER" }>("/discover", { query, seedUrls }),
+  createReport: (title: string, notes: string, reporter: Reporter) => post<{ case: CaseReport }>("/report", { title, notes, reporter }),
+  discover: (query: string, seedUrls: string[], reporter: Reporter) => post<{ case: CaseReport; decision: "DISCOVER" }>("/discover", { query, seedUrls, reporter }),
+  file: (caseId: string, channel: ReportChannel, url?: string) => post<{ case: CaseReport; report: ReportAction }>("/file", { caseId, channel, url }),
   scan(caseId: string, files: File[]) {
     const fd = new FormData();
     fd.set("caseId", caseId);

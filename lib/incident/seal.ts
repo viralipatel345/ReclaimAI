@@ -26,6 +26,9 @@ export function canonicalRecord(c: CaseReport): string {
       .sort((a, b) => a.assetId.localeCompare(b.assetId)),
     scrape: c.scrape ? { query: c.scrape.query, sources: c.scrape.sources.map((s) => s.url).sort() } : null,
     suggestions: c.suggestions ? { riskLevel: c.suggestions.riskLevel, actions: c.suggestions.actions.map((a) => a.type) } : null,
+    reports: c.reports
+      .map((r) => ({ channel: r.channel, status: r.status, reference: r.reference ?? null, steps: r.steps.map((s) => `${s.at} ${s.text}`), completedAt: r.completedAt ?? null }))
+      .sort((a, b) => (a.completedAt ?? "").localeCompare(b.completedAt ?? "")),
   };
   return JSON.stringify(canonical);
 }
@@ -33,7 +36,7 @@ export function canonicalRecord(c: CaseReport): string {
 /** Pure transition: returns the sealed primary record built from the draft. */
 export function sealRecord(draft: CaseReport, at: string): CaseReport {
   if (!draft.isDraft) throw new SealError("Record is already sealed", 409);
-  if (draft.verifications.length === 0 && !draft.scrape) throw new SealError("Nothing verified yet: scan media or run discovery first", 400);
+  if (draft.verifications.length === 0 && !draft.scrape && draft.reports.length === 0) throw new SealError("Nothing verified yet: scan media or run discovery first", 400);
   const id = draft.originalId ?? draft.id;
   const sealed: CaseReport = {
     ...draft,

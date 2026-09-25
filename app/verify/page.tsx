@@ -1,16 +1,20 @@
 "use client";
 // Incident verification flow: report (manual or agent discovery) → provenance scan →
-// Gemini suggestions → escalation → seal. The dark panel is the live Reports + Status tab.
+// Gemini suggestions → agent files reports through each channel, logging every step →
+// seal. The dark panel is the live Reports + Status tab.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, Eyebrow, Modal } from "@/components/ui";
+import { CHANNEL_ORDER, CHANNELS, REPORT_STATUS_LABEL } from "@/lib/incident/channels";
 import { incidentApi, type StatusRow } from "@/lib/incident/client";
-import type { AgentAction, CaseReport, CaseStatus, ProvenanceVerdict, RiskLevel, StatusEvent, VerificationResult } from "@/lib/incident/types";
-import { clockTime } from "@/lib/time";
+import type { AgentAction, CaseReport, CaseStatus, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, StatusEvent, VerificationResult } from "@/lib/incident/types";
+import { clockTime, shortDateTime } from "@/lib/time";
 
-const STEPS = ["Report", "Verify", "Act", "Seal"] as const;
-const STEP_FOR: Record<CaseStatus, number> = { DRAFT: 1, SCANNING: 1, ANALYZED: 2, ESCALATED: 2, SEALED: 3, CLOSED: 3 };
+const STEPS = ["Report", "Verify", "Act", "File", "Seal"] as const;
+const STEP_FOR: Record<CaseStatus, number> = { DRAFT: 1, SCANNING: 1, ANALYZED: 2, ESCALATED: 3, SEALED: 4, CLOSED: 4 };
+
+type Run = (label: string, fn: () => Promise<CaseReport>) => Promise<void>;
 
 export default function VerifyPage() {
   const demo = useDemoMode();
@@ -20,6 +24,7 @@ export default function VerifyPage() {
   const [events, setEvents] = useState<StatusEvent[]>([]);
   const [rows, setRows] = useState<StatusRow[]>([]);
   const [live, setLive] = useState(false);
+  const [artifact, setArtifact] = useState<ReportArtifact | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refreshRows = useCallback(() => incidentApi.status().then((r) => setRows(r.cases)).catch(() => {}), []);
@@ -27,14 +32,14 @@ export default function VerifyPage() {
   useEffect(() => {
     refreshRows();
     const off = incidentApi.subscribe((evt) => {
-      setEvents((prev) => [evt, ...prev].slice(0, 30));
+      setEvents((prev) => [evt, ...prev].slice(0, 40));
       setLive(true);
       refreshRows();
     });
     return off;
   }, [refreshRows]);
 
-  const run = async (label: string, fn: () => Promise<CaseReport>) => {
+  const run: Run = async (label, fn) => {
     setBusy(label);
     setError(null);
     try {
@@ -46,6 +51,13 @@ export default function VerifyPage() {
     }
   };
 
+  const fileChannel = (channel: ReportChannel, url?: string, thenShow = false) =>
+    run(`file:${channel}`, async () => {
+      const r = await incidentApi.file(c!.id, channel, url);
+      if (thenShow && r.report.artifact) setArtifact(r.report.artifact);
+      return r.case;
+    });
+
   const step = c ? STEP_FOR[c.status] : 0;
 
   return (
@@ -53,7 +65,7 @@ export default function VerifyPage() {
       <Eyebrow>Incident verification · SynthID + C2PA + Gemini</Eyebrow>
       <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.05] tracking-tight md:text-[52px]">Verify it. Then act on it.</h1>
       <p className="mt-3 max-w-[62ch] text-muted">
-        Report it yourself or let the agent go looking. Reclaim checks the media for AI watermarks and Content Credentials, asks Gemini what to do next, and seals the verified record.
+        Report it yourself or let the agent go looking. Reclaim checks the media for AI watermarks and Content Credentials, asks Gemini what to do next, files the reports, and keeps a timestamped record of every step.
       </p>
 
       <ol className="mt-6 flex gap-2 overflow-x-auto" aria-label="Steps">
@@ -79,16 +91,17 @@ export default function VerifyPage() {
         <div className="space-y-6">
           <ReportCard c={c} busy={busy} run={run} onReset={() => { setCase(null); setError(null); }} />
           <EvidenceCard c={c} busy={busy} run={run} fileRef={fileRef} />
-          <ActionsCard c={c} busy={busy} run={run} onAddEvidence={() => fileRef.current?.click()} />
+          <ActionsCard c={c} busy={busy} run={run} onAddEvidence={() => fileRef.current?.click()} onFile={fileChannel} />
+          <FileCard c={c} busy={busy} onFile={fileChannel} onShow={setArtifact} />
           <SealCard c={c} busy={busy} run={run} />
         </div>
         <StatusPanel rows={rows} events={events} live={live} demo={demo} activeId={c?.id} />
       </div>
+
+      {artifact && <ArtifactModal a={artifact} onClose={() => setArtifact(null)} />}
     </div>
   );
 }
-
-type Run = (label: string, fn: () => Promise<CaseReport>) => Promise<void>;
 
 function SectionHead({ n, title, hint }: { n: string; title: string; hint?: string }) {
   return (
@@ -96,12 +109,16 @@ function SectionHead({ n, title, hint }: { n: string; title: string; hint?: stri
       <h2 className="flex items-center gap-3 font-display text-xl font-semibold">
         <span className="font-mono text-xs text-accent">{n}</span> {title}
       </h2>
-      {hint && <span className="text-xs text-muted">{hint}</span>}
+      {hint && <span className="text-right text-xs text-muted">{hint}</span>}
     </header>
   );
 }
 
 const input = "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] outline-none transition-colors focus:border-accent disabled:opacity-60";
+const spin = <Icon name="refresh" size={16} className="animate-spin" />;
+const stamp = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+
+// ---------- 01 Report ----------
 
 function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: string | null; run: Run; onReset: () => void }) {
   const [branch, setBranch] = useState<"MANUAL" | "DISCOVER">("MANUAL");
@@ -109,6 +126,7 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   const [notes, setNotes] = useState("My ex keeps posting them and says he wants money. I'm scared and can't sleep.");
   const [query, setQuery] = useState("");
   const [seed, setSeed] = useState("");
+  const [reporter, setReporter] = useState<Reporter>({ legalName: "Jane Doe", contactEmail: "jane.doe@example.com", signature: "Jane Doe" });
 
   if (c) {
     return (
@@ -116,6 +134,11 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
         <SectionHead n="01" title={c.branch === "DISCOVER" ? "Agent discovery" : "Your report"} hint={c.id} />
         <p className="mt-3 font-medium">{c.title}</p>
         {c.notes && <p className="mt-1 text-sm leading-relaxed text-muted">{c.notes}</p>}
+        {c.reporter && (
+          <p className="mt-2 font-mono text-[11px] text-muted">
+            Notices go out under {c.reporter.legalName} · {c.reporter.contactEmail} · signed “{c.reporter.signature}”
+          </p>
+        )}
         {c.scrape && (
           <p className="mt-3 flex items-center gap-2 text-sm text-muted">
             <Icon name="search" size={15} className="text-accent" />
@@ -130,7 +153,9 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   }
 
   const isManual = branch === "MANUAL";
-  const canSubmit = isManual ? title.trim().length >= 3 : query.trim().length >= 3;
+  const canSubmit = (isManual ? title.trim().length >= 3 : query.trim().length >= 3) && reporter.legalName.trim().length >= 2 && /\S+@\S+\.\S+/.test(reporter.contactEmail) && reporter.signature.trim().length >= 2;
+  const field = (k: keyof Reporter) => ({ value: reporter[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => setReporter({ ...reporter, [k]: e.target.value }) });
+
   return (
     <section className={`${card} p-5 md:p-6`}>
       <SectionHead n="01" title="Report" hint="Signed in · human check passed" />
@@ -177,18 +202,37 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
         )}
       </div>
 
+      <div className="mt-5 rounded-xl border border-line bg-ground/60 p-4">
+        <p className="text-sm font-medium">For the notices the agent sends</p>
+        <p className="mt-0.5 text-xs text-muted">A valid TAKE IT DOWN request must carry your name, a contact email and your signature.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="block text-xs font-medium text-muted">
+            Name
+            <input {...field("legalName")} className={`${input} mt-1 text-sm`} />
+          </label>
+          <label className="block text-xs font-medium text-muted">
+            Contact email
+            <input {...field("contactEmail")} type="email" className={`${input} mt-1 text-sm`} />
+          </label>
+          <label className="block text-xs font-medium text-muted">
+            Type your name to sign
+            <input {...field("signature")} className={`${input} mt-1 font-display text-sm italic`} />
+          </label>
+        </div>
+      </div>
+
       <button
         disabled={!canSubmit || !!busy}
         onClick={() =>
           run(isManual ? "report" : "discover", async () =>
-            isManual ? (await incidentApi.createReport(title, notes)).case : (await incidentApi.discover(query, seed.trim() ? [seed.trim()] : [])).case,
+            isManual ? (await incidentApi.createReport(title, notes, reporter)).case : (await incidentApi.discover(query, seed.trim() ? [seed.trim()] : [], reporter)).case,
           )
         }
         className={`${btnPrimary} mt-5 w-full sm:w-auto`}
       >
         {busy === "report" || busy === "discover" ? (
           <>
-            <Icon name="refresh" size={16} className="animate-spin" /> {isManual ? "Creating…" : "Searching…"}
+            {spin} {isManual ? "Creating…" : "Searching…"}
           </>
         ) : (
           <>
@@ -200,6 +244,8 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   );
 }
 
+// ---------- 02 Evidence ----------
+
 const VERDICT: Record<ProvenanceVerdict, { label: string; cls: string; icon: IconName }> = {
   ai_generated: { label: "AI-generated", cls: "bg-overdue-soft text-overdue", icon: "sparkle" },
   likely_ai: { label: "Likely AI", cls: "bg-overdue-soft text-overdue", icon: "sparkle" },
@@ -207,11 +253,10 @@ const VERDICT: Record<ProvenanceVerdict, { label: string; cls: string; icon: Ico
   no_signal: { label: "No AI signal", cls: "bg-removed-soft text-removed", icon: "check" },
 };
 
-function VerdictPill({ v }: { v: ProvenanceVerdict }) {
-  const s = VERDICT[v];
+function Pill({ label, cls, icon }: { label: string; cls: string; icon?: IconName }) {
   return (
-    <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${s.cls}`}>
-      <Icon name={s.icon} size={13} strokeWidth={2.25} /> {s.label}
+    <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>
+      {icon ? <Icon name={icon} size={13} strokeWidth={2.25} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />} {label}
     </span>
   );
 }
@@ -222,9 +267,7 @@ function EvidenceCard({ c, busy, run, fileRef }: { c: CaseReport | null; busy: s
   return (
     <section className={`${card} p-5 md:p-6 ${!c ? "opacity-60" : ""}`}>
       <SectionHead n="02" title="Evidence & provenance" hint="Google SynthID · C2PA Content Credentials" />
-      <p className="mt-2 text-sm leading-relaxed text-muted">
-        Files are checked in memory and discarded. Reclaim keeps a SHA-256 fingerprint and the result — never the file.
-      </p>
+      <p className="mt-2 text-sm leading-relaxed text-muted">Files are checked in memory and discarded. Reclaim keeps a SHA-256 fingerprint and the result — never the file.</p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className={`${btnSecondary} h-12 flex-1 cursor-pointer justify-start ${disabled ? "pointer-events-none opacity-40" : ""}`}>
           <Icon name="plus" size={16} />
@@ -243,15 +286,7 @@ function EvidenceCard({ c, busy, run, fileRef }: { c: CaseReport | null; busy: s
           }
           className={btnPrimary}
         >
-          {busy === "scan" ? (
-            <>
-              <Icon name="refresh" size={16} className="animate-spin" /> Checking…
-            </>
-          ) : (
-            <>
-              <Icon name="shield-check" size={16} /> Check provenance
-            </>
-          )}
+          {busy === "scan" ? <>{spin} Checking…</> : <><Icon name="shield-check" size={16} /> Check provenance</>}
         </button>
       </div>
 
@@ -274,14 +309,13 @@ function EvidenceCard({ c, busy, run, fileRef }: { c: CaseReport | null; busy: s
           </ul>
         </div>
       )}
-      {c?.scrape && c.scrape.sources.length === 0 && (
-        <p className="mt-4 text-sm text-muted">No search provider configured — the scraper ran but found nothing. Upload the media above instead.</p>
-      )}
+      {c?.scrape && c.scrape.sources.length === 0 && <p className="mt-4 text-sm text-muted">No search provider configured — the scraper ran but found nothing. Upload the media above instead.</p>}
     </section>
   );
 }
 
 function VerificationRow({ v, asset }: { v: VerificationResult; asset?: CaseReport["assets"][number] }) {
+  const s = VERDICT[v.verdict];
   return (
     <li className="flex flex-col gap-2 py-3 md:flex-row md:items-start md:justify-between">
       <div className="min-w-0">
@@ -291,44 +325,28 @@ function VerificationRow({ v, asset }: { v: VerificationResult; asset?: CaseRepo
         </p>
         <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
           <span>
-            <span className="font-medium text-ink">SynthID</span>{" "}
-            {v.synthId.source === "stub" ? "detector not configured" : `${v.synthId.isGoogleAiGenerated ? "watermark found" : "no watermark"} · ${Math.round(v.synthId.synthIdConfidence * 100)}%`}
+            <span className="font-medium text-ink">SynthID</span> {v.synthId.source === "stub" ? "detector not configured" : `${v.synthId.isGoogleAiGenerated ? "watermark found" : "no watermark"} · ${Math.round(v.synthId.synthIdConfidence * 100)}%`}
           </span>
           <span>
-            <span className="font-medium text-ink">C2PA</span>{" "}
-            {v.c2pa.present ? `${v.c2pa.c2paIssuer ?? "unknown issuer"}${v.c2pa.claimGenerator ? ` · ${v.c2pa.claimGenerator}` : ""}` : "no manifest"}
+            <span className="font-medium text-ink">C2PA</span> {v.c2pa.present ? `${v.c2pa.c2paIssuer ?? "unknown issuer"}${v.c2pa.claimGenerator ? ` · ${v.c2pa.claimGenerator}` : ""}` : "no manifest"}
           </span>
         </p>
       </div>
       <span className="self-start">
-        <VerdictPill v={v.verdict} />
+        <Pill label={s.label} cls={s.cls} icon={s.icon} />
       </span>
     </li>
   );
 }
 
-const RISK: Record<RiskLevel, string> = {
-  low: "bg-removed-soft text-removed",
-  medium: "bg-accent-soft text-accent",
-  high: "bg-overdue-soft text-overdue",
-  critical: "bg-overdue text-white",
-};
+// ---------- 03 Gemini actions ----------
 
-const ACTION_ICON: Record<AgentAction["type"], IconName> = {
-  add_evidence: "plus",
-  call_helpline: "heart",
-  notify_friends_family: "send",
-  report_police: "flag",
-  report_parasell: "external",
-};
+const RISK: Record<RiskLevel, string> = { low: "bg-removed-soft text-removed", medium: "bg-accent-soft text-accent", high: "bg-overdue-soft text-overdue", critical: "bg-overdue text-white" };
+const ACTION_ICON: Record<AgentAction["type"], IconName> = { add_evidence: "plus", call_helpline: "heart", notify_friends_family: "send", report_police: "flag", report_parasell: "external" };
 
-function ActionsCard({ c, busy, run, onAddEvidence }: { c: CaseReport | null; busy: string | null; run: Run; onAddEvidence: () => void }) {
-  const [dispatch, setDispatch] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+function ActionsCard({ c, busy, run, onAddEvidence, onFile }: { c: CaseReport | null; busy: string | null; run: Run; onAddEvidence: () => void; onFile: (ch: ReportChannel, url?: string, show?: boolean) => Promise<void> }) {
   const ready = !!c && (c.verifications.length > 0 || !!c.scrape);
   const s = c?.suggestions;
-  const escalation = c?.escalations[0];
-
   return (
     <section className={`${card} p-5 md:p-6 ${!ready ? "opacity-60" : ""}`}>
       <SectionHead n="03" title="What to do next" hint={s ? `${s.source === "gemini" ? s.model : "rule-based"} · ${s.iterations} context round${s.iterations === 1 ? "" : "s"}` : "Gemini"} />
@@ -336,23 +354,13 @@ function ActionsCard({ c, busy, run, onAddEvidence }: { c: CaseReport | null; bu
         <>
           <p className="mt-2 text-sm leading-relaxed text-muted">Gemini reads your notes, the web context and the provenance results, then suggests grounded next steps.</p>
           <button disabled={!ready || !!busy} onClick={() => run("analyze", async () => (await incidentApi.analyze(c!.id)).case)} className={`${btnPrimary} mt-4`}>
-            {busy === "analyze" ? (
-              <>
-                <Icon name="refresh" size={16} className="animate-spin" /> Thinking…
-              </>
-            ) : (
-              <>
-                <Icon name="sparkle" size={16} /> Ask Gemini
-              </>
-            )}
+            {busy === "analyze" ? <>{spin} Thinking…</> : <><Icon name="sparkle" size={16} /> Ask Gemini</>}
           </button>
         </>
       ) : (
         <>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${RISK[s.riskLevel]}`}>
-              <span className="h-1.5 w-1.5 rounded-full bg-current" /> {s.riskLevel} risk
-            </span>
+            <Pill label={`${s.riskLevel} risk`} cls={RISK[s.riskLevel]} />
             <span className="text-xs text-muted">{s.aiGenerationAssessment}</span>
           </div>
           <p className="mt-3 text-[15px] leading-relaxed">{s.summary}</p>
@@ -371,51 +379,19 @@ function ActionsCard({ c, busy, run, onAddEvidence }: { c: CaseReport | null; bu
                     <p className="mt-0.5 text-sm leading-relaxed text-muted">{a.rationale}</p>
                   </div>
                 </div>
-                <ActionButton a={a} c={c!} busy={busy} run={run} escalation={escalation} onAddEvidence={onAddEvidence} onDispatch={setDispatch} />
+                <ActionButton a={a} c={c!} busy={busy} onAddEvidence={onAddEvidence} onFile={onFile} />
               </li>
             ))}
-            {!s.actions.some((a) => a.type === "report_parasell") && (
-              <li className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-                <div className="flex min-w-0 gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-accent-soft text-accent">
-                    <Icon name="external" size={17} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-medium">
-                      Official escalation <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-muted">optional</span>
-                    </p>
-                    <p className="mt-0.5 text-sm leading-relaxed text-muted">File the verified case with Parasell — hashes and verdicts only, never the media.</p>
-                  </div>
-                </div>
-                <ActionButton a={{ type: "report_parasell", priority: "optional", title: "", rationale: "" }} c={c!} busy={busy} run={run} escalation={escalation} onAddEvidence={onAddEvidence} onDispatch={setDispatch} />
-              </li>
-            )}
           </ul>
         </>
-      )}
-      {dispatch && (
-        <Modal
-          title="Report to police"
-          onClose={() => setDispatch(null)}
-          footer={
-            <button
-              onClick={() => navigator.clipboard.writeText(dispatch).then(() => setCopied(true))}
-              className={btnSecondary}
-            >
-              <Icon name={copied ? "check" : "copy"} size={15} /> {copied ? "Copied" : "Copy summary"}
-            </button>
-          }
-        >
-          <p className="text-sm text-muted">A dispatch-format summary you can read out or paste into an online report. It never describes the imagery.</p>
-          <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-ground p-4 font-mono text-xs leading-relaxed">{dispatch}</pre>
-        </Modal>
       )}
     </section>
   );
 }
 
-function ActionButton({ a, c, busy, run, escalation, onAddEvidence, onDispatch }: { a: AgentAction; c: CaseReport; busy: string | null; run: Run; escalation?: CaseReport["escalations"][number]; onAddEvidence: () => void; onDispatch: (s: string) => void }) {
+function ActionButton({ a, c, busy, onAddEvidence, onFile }: { a: AgentAction; c: CaseReport; busy: string | null; onAddEvidence: () => void; onFile: (ch: ReportChannel, url?: string, show?: boolean) => Promise<void> }) {
   const cls = `${btnSecondary} shrink-0`;
+  const done = (ch: ReportChannel) => c.reports.find((r) => r.channel === ch && r.status !== "failed" && r.status !== "running");
   switch (a.type) {
     case "add_evidence":
       return (
@@ -438,60 +414,216 @@ function ActionButton({ a, c, busy, run, escalation, onAddEvidence, onDispatch }
         </a>
       );
     case "report_police":
-      return (
-        <button onClick={() => onDispatch(a.payload?.dispatchSummary ?? "WHAT / WHEN / WHERE / EVIDENCE")} className={cls}>
-          <Icon name="flag" size={15} /> Prepare report
+      return done("police") ? <DonePill r={done("police")!} /> : (
+        <button disabled={!!busy} onClick={() => onFile("police", undefined, true)} className={cls}>
+          {busy === "file:police" ? spin : <Icon name="flag" size={15} />} Prepare report
         </button>
       );
     case "report_parasell":
-      if (escalation && (escalation.status === "accepted" || escalation.status === "submitted")) {
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-removed-soft px-3 py-1.5 text-xs font-semibold text-removed">
-            <Icon name="check" size={13} strokeWidth={2.25} /> Sent · {escalation.externalId}
-          </span>
-        );
-      }
-      return (
-        <button disabled={!!busy} onClick={() => run("parasell", async () => (await incidentApi.parasell(c.id)).case)} className={`${btnPrimary} h-10 shrink-0 px-4 text-sm`}>
-          {busy === "parasell" ? <Icon name="refresh" size={15} className="animate-spin" /> : <Icon name="external" size={15} />} Send to Parasell
+      return done("parasell") ? <DonePill r={done("parasell")!} /> : (
+        <button disabled={!!busy} onClick={() => onFile("parasell")} className={`${btnPrimary} h-10 shrink-0 px-4 text-sm`}>
+          {busy === "file:parasell" ? spin : <Icon name="external" size={15} />} Send to Parasell
         </button>
       );
   }
 }
 
+function DonePill({ r }: { r: ReportAction }) {
+  return <Pill label={`${REPORT_STATUS_LABEL[r.status]}${r.reference ? ` · ${r.reference}` : ""}`} cls="bg-removed-soft text-removed" icon="check" />;
+}
+
+// ---------- 04 File reports ----------
+
+const REPORT_PILL: Record<ReportStatus, string> = {
+  running: "bg-accent-soft text-accent",
+  sent: "bg-removed-soft text-removed",
+  simulated: "bg-removed-soft text-removed",
+  handed_off: "bg-accent-soft text-accent",
+  prepared: "bg-accent-soft text-accent",
+  failed: "bg-overdue-soft text-overdue",
+};
+const CHANNEL_ICON: Record<ReportChannel, IconName> = { platform: "clock", stopncii: "shield-check", ftc: "flag", police: "alert", parasell: "external" };
+
+function FileCard({ c, busy, onFile, onShow }: { c: CaseReport | null; busy: string | null; onFile: (ch: ReportChannel, url?: string) => Promise<void>; onShow: (a: ReportArtifact) => void }) {
+  const ready = !!c && c.status !== "SEALED" && (c.verifications.length > 0 || !!c.scrape);
+  const [url, setUrl] = useState("https://imgvault.example/u/jane/3021");
+  const [open, setOpen] = useState<string | null>(null);
+  const filed = c?.reports.filter((r) => r.status !== "failed").length ?? 0;
+  return (
+    <section className={`${card} p-5 md:p-6 ${!ready && c?.status !== "SEALED" ? "opacity-60" : ""}`}>
+      <SectionHead n="04" title="File the reports" hint={filed ? `${filed} filed` : "The agent does the filing"} />
+      <p className="mt-2 text-sm leading-relaxed text-muted">
+        Pick any channel. The agent resolves the destination, drafts what’s needed, sends it where an API or email exists, and hands off with everything filled in where it doesn’t. Every step is logged with a timestamp.
+      </p>
+      <ul className="mt-4 divide-y divide-line">
+        {CHANNEL_ORDER.map((ch) => {
+          const meta = CHANNELS[ch];
+          const reports = c?.reports.filter((r) => r.channel === ch) ?? [];
+          const latest = reports[0];
+          const isBusy = busy === `file:${ch}`;
+          const isOpen = open === ch;
+          return (
+            <li key={ch} className="py-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="flex min-w-0 gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-accent-soft text-accent">
+                    <Icon name={CHANNEL_ICON[ch]} size={17} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 font-medium">
+                      {meta.label}
+                      {latest && <Pill label={REPORT_STATUS_LABEL[latest.status]} cls={REPORT_PILL[latest.status]} />}
+                    </p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-muted">{meta.description}</p>
+                    {meta.needsUrl && !latest && (
+                      <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… link to the content" disabled={!ready} className={`${input} mt-2 max-w-md font-mono text-xs`} />
+                    )}
+                    {latest?.deadlineAt && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-overdue">
+                        <Icon name="clock" size={13} /> 48-hour deadline {shortDateTime(latest.deadlineAt)}
+                      </p>
+                    )}
+                    {latest && latest.steps.length > 0 && (
+                      <button onClick={() => setOpen(isOpen ? null : ch)} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-accent hover:underline">
+                        <Icon name={isOpen ? "x" : "eye"} size={13} /> {isOpen ? "Hide steps" : `${latest.steps.length} steps · last ${stamp(latest.steps[latest.steps.length - 1].at)}`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+                  {latest?.artifact && (
+                    <button onClick={() => onShow(latest.artifact!)} className={btnSecondary}>
+                      <Icon name="form" size={15} /> View
+                    </button>
+                  )}
+                  {latest && (latest.status === "handed_off" || latest.status === "prepared") && /^https?:/.test(latest.destination) && (
+                    <a href={latest.destination} target="_blank" rel="noopener noreferrer" className={btnSecondary}>
+                      <Icon name="external" size={15} /> Open
+                    </a>
+                  )}
+                  {latest?.artifact?.mailto && (
+                    <a href={latest.artifact.mailto} className={btnSecondary}>
+                      <Icon name="mail" size={15} /> Email
+                    </a>
+                  )}
+                  <button
+                    disabled={!ready || !!busy || (meta.needsUrl && !latest && !url.trim())}
+                    onClick={() => onFile(ch, meta.needsUrl ? url.trim() : undefined)}
+                    className={latest ? btnSecondary : `${btnPrimary} h-10 px-4 text-sm`}
+                  >
+                    {isBusy ? spin : <Icon name={latest ? "refresh" : "send"} size={15} />} {isBusy ? "Filing…" : latest ? "File again" : "File"}
+                  </button>
+                </div>
+              </div>
+              {isOpen && latest && (
+                <ol className="mt-3 ml-12 border-l border-line pl-4">
+                  {latest.steps.map((s, i) => (
+                    <li key={i} className="relative py-1.5 text-sm leading-snug">
+                      <span className="absolute -left-[21px] top-2.5 h-2 w-2 rounded-full bg-accent" />
+                      <span className="mr-2 font-mono text-[11px] text-muted">{stamp(s.at)}</span>
+                      {s.text}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function ArtifactModal({ a, onClose }: { a: ReportArtifact; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const text = a.fields ? a.fields.map((f) => `${f.label}:\n${f.value}`).join("\n\n") : a.body;
+  return (
+    <Modal
+      title={a.title}
+      onClose={onClose}
+      footer={
+        <>
+          {a.mailto && (
+            <a href={a.mailto} className={btnSecondary}>
+              <Icon name="mail" size={15} /> Open in mail
+            </a>
+          )}
+          <button onClick={() => navigator.clipboard.writeText(text).then(() => setCopied(true))} className={btnSecondary}>
+            <Icon name={copied ? "check" : "copy"} size={15} /> {copied ? "Copied" : "Copy"}
+          </button>
+        </>
+      }
+    >
+      {a.fields ? (
+        <dl className="space-y-3">
+          {a.fields.map((f) => (
+            <div key={f.label}>
+              <dt className="text-xs font-medium uppercase tracking-wider text-muted">{f.label}</dt>
+              <dd className="mt-1 whitespace-pre-wrap rounded-lg bg-ground p-3 font-mono text-xs leading-relaxed">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <pre className="whitespace-pre-wrap rounded-xl bg-ground p-4 font-mono text-xs leading-relaxed">{a.body}</pre>
+      )}
+    </Modal>
+  );
+}
+
+// ---------- 05 Seal + record ----------
+
 function SealCard({ c, busy, run }: { c: CaseReport | null; busy: string | null; run: Run }) {
-  const ready = !!c && (c.verifications.length > 0 || !!c.scrape);
+  const ready = !!c && (c.verifications.length > 0 || !!c.scrape || c.reports.length > 0);
   const sealed = c?.status === "SEALED";
+  const log = c
+    ? [...c.reports.flatMap((r) => r.steps.map((s) => ({ at: s.at, who: CHANNELS[r.channel].label, text: s.text }))), ...c.events.map((e) => ({ at: e.at, who: "Case", text: e.text }))].sort((a, b) => a.at.localeCompare(b.at))
+    : [];
+  const [copied, setCopied] = useState(false);
   return (
     <section className={`${card} p-5 md:p-6 ${!ready ? "opacity-60" : ""} ${sealed ? "border-removed/40" : ""}`}>
-      <SectionHead n="04" title="Seal the record" hint="Replace with original" />
+      <SectionHead n="05" title="Record & seal" hint={log.length ? `${log.length} entries` : "Replace with original"} />
+      {log.length > 0 && (
+        <>
+          <ol className="mt-4 max-h-72 overflow-y-auto border-l border-line pl-4">
+            {log.map((e, i) => (
+              <li key={i} className="relative py-1.5 text-sm leading-snug">
+                <span className={`absolute -left-[21px] top-2.5 h-2 w-2 rounded-full ${e.who === "Case" ? "bg-line" : "bg-accent"}`} />
+                <span className="mr-2 font-mono text-[11px] text-muted">{stamp(e.at)}</span>
+                <span className="mr-1.5 text-xs font-medium text-muted">{e.who}</span>
+                {e.text}
+              </li>
+            ))}
+          </ol>
+          <button
+            onClick={() => navigator.clipboard.writeText(log.map((e) => `${e.at}\t${e.who}\t${e.text}`).join("\n")).then(() => setCopied(true))}
+            className={`${btnGhost} mt-2 -ml-2`}
+          >
+            <Icon name={copied ? "check" : "copy"} size={14} /> {copied ? "Copied" : "Copy the record"}
+          </button>
+        </>
+      )}
       {sealed ? (
-        <div className="mt-3">
+        <div className="mt-4 border-t border-line pt-4">
           <p className="flex items-center gap-2 text-sm font-medium text-removed">
             <Icon name="lock" size={16} /> Verified record sealed {c!.sealedAt && `at ${clockTime(c!.sealedAt)}`}
           </p>
           <p className="mt-2 break-all font-mono text-[11px] text-muted">sha256 {c!.recordHash}</p>
         </div>
       ) : (
-        <>
-          <p className="mt-2 text-sm leading-relaxed text-muted">Overwrites the working draft with the verified record and fingerprints it, so any later change is detectable.</p>
+        <div className="mt-4 border-t border-line pt-4">
+          <p className="text-sm leading-relaxed text-muted">Overwrites the working draft with the verified record — evidence, verdicts and every step above — and fingerprints it, so any later change is detectable.</p>
           <button disabled={!ready || !!busy} onClick={() => run("seal", async () => (await incidentApi.seal(c!.id)).case)} className={`${btnSecondary} mt-4 h-12 px-5 text-[15px]`}>
-            {busy === "seal" ? <Icon name="refresh" size={16} className="animate-spin" /> : <Icon name="lock" size={16} />} Replace with original
+            {busy === "seal" ? spin : <Icon name="lock" size={16} />} Replace with original
           </button>
-        </>
+        </div>
       )}
     </section>
   );
 }
 
-const STATUS_DOT: Record<CaseStatus, string> = {
-  DRAFT: "bg-panel-muted",
-  SCANNING: "bg-[#8E9BE0]",
-  ANALYZED: "bg-[#8E9BE0]",
-  ESCALATED: "bg-[#F3C77A]",
-  SEALED: "bg-[#6FC39D]",
-  CLOSED: "bg-[#6FC39D]",
-};
+// ---------- Status panel ----------
+
+const STATUS_DOT: Record<CaseStatus, string> = { DRAFT: "bg-panel-muted", SCANNING: "bg-[#8E9BE0]", ANALYZED: "bg-[#8E9BE0]", ESCALATED: "bg-[#F3C77A]", SEALED: "bg-[#6FC39D]", CLOSED: "bg-[#6FC39D]" };
 
 function StatusPanel({ rows, events, live, demo, activeId }: { rows: StatusRow[]; events: StatusEvent[]; live: boolean; demo: boolean; activeId?: string }) {
   return (
@@ -506,7 +638,7 @@ function StatusPanel({ rows, events, live, demo, activeId }: { rows: StatusRow[]
           </span>
         </p>
         <p className="mt-3 font-display text-2xl font-semibold leading-snug">{rows.length ? `${rows.length} report${rows.length === 1 ? "" : "s"} on file.` : "Nothing filed yet."}</p>
-        {demo && <p className="mt-1 text-sm text-panel-muted">Demo mode: sign-in and Parasell are simulated.</p>}
+        {demo && <p className="mt-1 text-sm text-panel-muted">Demo mode: sign-in and sends are simulated.</p>}
       </div>
 
       {rows.length > 0 && (
@@ -535,7 +667,7 @@ function StatusPanel({ rows, events, live, demo, activeId }: { rows: StatusRow[]
           <p className="mt-3 text-sm text-panel-muted">Events stream here the moment anything changes.</p>
         ) : (
           <ol className="mt-1">
-            {events.slice(0, 8).map((e) => (
+            {events.slice(0, 10).map((e) => (
               <li key={e.id} className="flex gap-3 border-b border-panel-line py-3 last:border-0">
                 <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[e.status]}`} />
                 <div className="min-w-0">

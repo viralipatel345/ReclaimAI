@@ -80,12 +80,13 @@ export function buildParasellPayload(c: CaseReport): ParasellReportPayload {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function submitToParasell(c: CaseReport, fetchImpl: typeof fetch = fetch): Promise<ParasellEscalation> {
+export async function submitToParasell(c: CaseReport, opts: { demo?: boolean; fetchImpl?: typeof fetch } = {}): Promise<ParasellEscalation> {
+  const fetchImpl = opts.fetchImpl ?? fetch;
   const createdAt = new Date().toISOString();
   const requestPayload = buildParasellPayload(c) as unknown as Record<string, unknown>;
   const base: ParasellEscalation = { id: newId("esc"), caseId: c.id, status: "pending", requestPayload, createdAt };
 
-  if (isDemoMode() && !parasellConfigured()) {
+  if ((opts.demo ?? isDemoMode()) && !parasellConfigured()) {
     return { ...base, status: "accepted", externalId: `demo_${c.id}`, responseBody: { simulated: true }, submittedAt: createdAt };
   }
   if (!parasellConfigured()) return { ...base, status: "failed", error: "Parasell credentials not configured" };

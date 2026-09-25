@@ -133,6 +133,51 @@ export interface StatusEvent {
   at: string;
 }
 
+/** Details a valid TAKE IT DOWN Act notice must carry. */
+export interface Reporter {
+  legalName: string;
+  contactEmail: string;
+  signature: string;
+  signedAt?: string;
+}
+
+export type ReportChannel = "platform" | "stopncii" | "ftc" | "police" | "parasell";
+
+/**
+ * sent: delivered by API/email · simulated: demo-mode send · handed_off: everything prepared,
+ * user completes it at the destination (no API exists) · prepared: ready for the user to send.
+ */
+export type ReportStatus = "running" | "sent" | "simulated" | "handed_off" | "prepared" | "failed";
+
+export interface ReportStep {
+  at: string;
+  text: string;
+}
+
+/** What the agent produced for a channel: a notice, complaint, dispatch summary or hash list. */
+export interface ReportArtifact {
+  title: string;
+  body: string;
+  mailto?: string;
+  fields?: { label: string; value: string }[];
+}
+
+export interface ReportAction {
+  id: string;
+  caseId: string;
+  channel: ReportChannel;
+  status: ReportStatus;
+  steps: ReportStep[];
+  destination: string;
+  reference?: string;
+  artifact?: ReportArtifact;
+  /** Platform notices only: sentAt + 48h. */
+  deadlineAt?: string;
+  error?: string;
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface CaseReport {
   id: string;
   userId: string;
@@ -140,6 +185,7 @@ export interface CaseReport {
   status: CaseStatus;
   title: string;
   notes: string;
+  reporter?: Reporter;
   isDraft: boolean;
   originalId?: string;
   recordHash?: string;
@@ -149,6 +195,7 @@ export interface CaseReport {
   scrape?: ScrapeData;
   suggestions?: AgentSuggestions;
   escalations: ParasellEscalation[];
+  reports: ReportAction[];
   events: StatusEvent[];
   createdAt: string;
   updatedAt: string;

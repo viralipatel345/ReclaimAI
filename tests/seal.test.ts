@@ -46,6 +46,7 @@ const draft: CaseReport = {
     },
   ],
   escalations: [],
+  reports: [],
   events: [{ id: "evt_0", caseId: "case_draft", status: "DRAFT", text: "created", at }],
   createdAt: at,
   updatedAt: at,

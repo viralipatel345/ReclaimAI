@@ -7,7 +7,7 @@ import { analyzeCase, inputFromCase } from "./orchestrator";
 import { runDiscoverScrape } from "./scrape";
 import { incidentStore, statusEvent, transition, type IncidentStore } from "./store";
 import { publishStatus } from "./events";
-import type { CaseReport, ReportBranch, User } from "./types";
+import type { CaseReport, ReportBranch, Reporter, User } from "./types";
 
 const MAX_DISCOVER_SCANS = 5;
 
@@ -19,7 +19,16 @@ export async function loadOwned(caseId: string, userId: string, store: IncidentS
   return c;
 }
 
-export async function createReport(user: User, input: { branch: ReportBranch; title: string; notes?: string }, store: IncidentStore = incidentStore): Promise<CaseReport> {
+export function cleanReporter(raw: unknown, at: string): Reporter | undefined {
+  const r = raw as Partial<Reporter> | null;
+  if (!r || typeof r !== "object") return undefined;
+  const s = (v: unknown, max = 120) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+  const reporter = { legalName: s(r.legalName), contactEmail: s(r.contactEmail), signature: s(r.signature) };
+  if (!reporter.legalName && !reporter.contactEmail && !reporter.signature) return undefined;
+  return { ...reporter, signedAt: reporter.signature ? at : undefined };
+}
+
+export async function createReport(user: User, input: { branch: ReportBranch; title: string; notes?: string; reporter?: Reporter }, store: IncidentStore = incidentStore): Promise<CaseReport> {
   const at = new Date().toISOString();
   const id = newId("case");
   const evt = statusEvent(id, "DRAFT", input.branch === "DISCOVER" ? "Automated discovery started." : "Report created.", at);
@@ -30,10 +39,12 @@ export async function createReport(user: User, input: { branch: ReportBranch; ti
     status: "DRAFT",
     title: input.title.trim().slice(0, 200),
     notes: (input.notes ?? "").trim().slice(0, 5000),
+    reporter: input.reporter,
     isDraft: true,
     assets: [],
     verifications: [],
     escalations: [],
+    reports: [],
     events: [evt],
     createdAt: at,
     updatedAt: at,

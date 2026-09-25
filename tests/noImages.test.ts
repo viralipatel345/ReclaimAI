@@ -85,8 +85,13 @@ describe("re-checks store only a title and a status", () => {
 });
 
 describe("no image handling anywhere in the code", () => {
+  // Deliberate exception: incident verification (/verify) accepts media so SynthID + C2PA
+  // can check it. Bytes are scanned in memory and dropped — only a hash and verdict are
+  // kept (see tests/provenance.test.ts). The takedown flow itself stays links-only.
+  const PROVENANCE_PATHS = [join("app", "verify"), join("app", "api", "incident", "scan"), join("lib", "provenance")];
   const files: string[] = [];
   const walk = (dir: string) => {
+    if (PROVENANCE_PATHS.some((p) => dir === p)) return;
     for (const f of readdirSync(dir)) {
       const p = join(dir, f);
       if (statSync(p).isDirectory()) walk(p);

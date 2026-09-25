@@ -84,6 +84,11 @@ model CaseReport {
   sealedAt     DateTime?
   /// Latest Gemini AgentSuggestions payload.
   suggestions  Json?
+  /// Details a valid TAKE IT DOWN notice must carry.
+  reporterName      String?
+  reporterEmail     String?
+  reporterSignature String?
+  reporterSignedAt  DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -91,6 +96,7 @@ model CaseReport {
   verifications VerificationResult[]
   scrape        ScrapeData?
   escalations   ParasellEscalation[]
+  reports       ReportAction[]
   events        StatusEvent[]
 }
 
@@ -177,4 +183,42 @@ model StatusEvent {
   at     DateTime   @default(now())
 
   @@index([caseId, at])
+}
+
+enum ReportChannel {
+  PLATFORM
+  STOPNCII
+  FTC
+  POLICE
+  PARASELL
+}
+
+enum ReportStatus {
+  RUNNING
+  SENT
+  SIMULATED
+  HANDED_OFF
+  PREPARED
+  FAILED
+}
+
+/// One filing through one channel, with the agent's timestamped step log.
+model ReportAction {
+  id          String        @id @default(cuid())
+  caseId      String
+  case        CaseReport    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  channel     ReportChannel
+  status      ReportStatus  @default(RUNNING)
+  /// [{ at, text }]
+  steps       Json
+  destination String
+  reference   String?
+  /// { title, body, mailto?, fields? }
+  artifact    Json?
+  deadlineAt  DateTime?
+  error       String?
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  @@index([caseId, startedAt])
 }
