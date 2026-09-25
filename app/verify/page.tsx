@@ -730,7 +730,7 @@ function HarnessCard({ c, busy, run, demo }: { c: CaseReport | null; busy: strin
   const [cadence, setCadence] = useState<number>(DEFAULT_MANDATE.cadenceHours);
   const [signature, setSignature] = useState("");
   const [openRun, setOpenRun] = useState<string | null>(null);
-  const ready = !!c && c.status !== "SEALED" && !!c.imageSearch;
+  const ready = !!c && c.status !== "SEALED" && (!!c.imageSearch || c.verifications.length > 0 || !!c.scrape);
   const m = c?.mandate;
   const active = !!m?.enabled;
   const toggle = (id: MandateAction) => setAllowed((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
