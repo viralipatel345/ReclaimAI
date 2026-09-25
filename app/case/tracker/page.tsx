@@ -7,6 +7,7 @@ import { counts, displayStatus, linksFor, type DisplayStatus } from "@/lib/caseO
 import { DEADLINE_HOURS, HOUR_MS } from "@/lib/config";
 import { clockTime, hoursMinutes, shortDateTime } from "@/lib/time";
 import { useCase } from "@/lib/useCase";
+import { downloadEvidencePdf } from "@/lib/evidencePdf";
 import { useNow } from "@/lib/useNow";
 import type { Case, TakedownRequest } from "@/lib/types";
 
@@ -45,8 +46,8 @@ function TrackerView({ c, now }: { c: Case; now: number }) {
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="grid content-start gap-5 md:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-1 content-start gap-5 md:grid-cols-2">
           {c.requests.map((r) => (
             <ClockCard key={r.id} r={r} c={c} now={now} />
           ))}
@@ -94,9 +95,9 @@ function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) 
       <div className="mt-6">
         {isRemoved ? (
           <>
-            <p className="text-xs uppercase tracking-wider text-removed">Taken down</p>
-            <p className="mt-1 font-display text-[32px] font-semibold leading-tight text-removed">
-              Removed in {hoursMinutes(new Date(r.removedAt!).getTime() - sent)}
+            <p className="text-xs uppercase tracking-wider text-removed">Removed in</p>
+            <p className="mt-1 font-display text-[44px] font-semibold leading-none tracking-tight text-removed">
+              {hoursMinutes(new Date(r.removedAt!).getTime() - sent)}
             </p>
           </>
         ) : r.deadlineAt ? (
@@ -118,7 +119,17 @@ function ClockCard({ r, c, now }: { r: TakedownRequest; c: Case; now: number }) 
       <div className="mt-5">
         <ProgressBar value={isRemoved || isOverdue ? 1 : elapsed} tone={isRemoved ? "removed" : isOverdue ? "overdue" : "accent"} />
       </div>
-      <footer className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+      {r.remindersDrafted.length > 0 && !isRemoved && (
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+          <Icon name="mail" size={13} /> Reminders sent at {r.remindersDrafted.map((h) => `${h}h`).join(" and ")}
+        </p>
+      )}
+      {r.acknowledgedAt && !isRemoved && (
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+          <Icon name="check" size={13} /> Acknowledged {shortDateTime(r.acknowledgedAt)}
+        </p>
+      )}
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-muted">
         <span>
           {isRemoved
             ? `Removed ${shortDateTime(r.removedAt)} · re-checked every 3 days`
@@ -177,6 +188,12 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
           ))}
         </ol>
       </div>
+      <button
+        onClick={() => downloadEvidencePdf(c)}
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/25 text-sm font-medium hover:bg-white/10"
+      >
+        <Icon name="download" size={16} /> Download evidence PDF
+      </button>
     </aside>
   );
 }

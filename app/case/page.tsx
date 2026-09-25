@@ -82,7 +82,7 @@ function CaseForm({ c }: { c: Case }) {
       <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">Tell us where</h1>
       <p className="mt-2 max-w-[60ch] text-muted">Share the links. You never need to describe what they show.</p>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_1fr]">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <IntakeChat c={c} />
 
         {/* Links */}
@@ -145,7 +145,7 @@ function CaseForm({ c }: { c: Case }) {
       </div>
 
       {/* Attestation + consent */}
-      <section className={`${card} mt-6 grid gap-6 p-5 md:p-6 lg:grid-cols-[1.15fr_1fr]`} aria-labelledby="sign-title">
+      <section className={`${card} mt-6 grid grid-cols-1 gap-6 p-5 md:p-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]`} aria-labelledby="sign-title">
         <div>
           <h2 id="sign-title" className="font-display text-xl font-semibold">Sign your requests</h2>
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-ground p-4">
