@@ -3,7 +3,8 @@
 // calls its designated final tool, whose arguments are the flow's structured output.
 import { FunctionCallingConfigMode, type Content, type FunctionDeclaration } from "@google/genai";
 import { generate } from "./gemini";
-import { matchDirectory, normalizeUrl, unresolvedPlatform } from "./platforms";
+import { normalizeUrl } from "./platforms";
+import { resolvePlatform } from "./resolve";
 
 export type ToolName =
   | "collect_intake"
@@ -113,18 +114,20 @@ export const TOOL_DECLARATIONS: Record<ToolName, FunctionDeclaration> = {
 
 export type ToolHandler = (args: Record<string, unknown>) => Promise<Record<string, unknown>> | Record<string, unknown>;
 
-/** Default handlers usable by any flow. resolve_platform is directory-only here; Search grounding is added in step 3. */
+/** Default handlers usable by any flow. */
 export const BASE_HANDLERS: Partial<Record<ToolName, ToolHandler>> = {
-  resolve_platform: ({ url }) => {
+  resolve_platform: async ({ url }) => {
     const normalized = normalizeUrl(String(url ?? ""));
     if (!normalized) return { error: "Not a valid web link." };
-    const p = matchDirectory(normalized) ?? unresolvedPlatform(normalized);
+    const p = await resolvePlatform(normalized);
     return { platform: p.name, channel: p.channel, target: p.target, confidence: p.confidence, message: p.message ?? null };
   },
 };
 
 export interface AgentRun<T> {
   output: T;
+  /** Every final-tool call from the finishing turn (models may call in parallel). */
+  outputs: { name: ToolName; args: T }[];
   model: string;
   toolCalls: string[];
 }
@@ -137,7 +140,7 @@ export async function runAgent<T>(opts: {
   systemInstruction: string;
   contents: Content[];
   tools: ToolName[];
-  finalTool: ToolName;
+  finalTool: ToolName | ToolName[];
   handlers?: Partial<Record<ToolName, ToolHandler>>;
   maxSteps?: number;
   model?: string;
@@ -146,6 +149,7 @@ export async function runAgent<T>(opts: {
   const contents = [...opts.contents];
   const toolCalls: string[] = [];
   let model = "";
+  const finals = new Set<ToolName>(Array.isArray(opts.finalTool) ? opts.finalTool : [opts.finalTool]);
 
   for (let step = 0; step < (opts.maxSteps ?? 4); step++) {
     const res = await generate({
@@ -162,10 +166,11 @@ export async function runAgent<T>(opts: {
     const calls = res.response.functionCalls ?? [];
     if (calls.length === 0) throw new Error("Model returned no tool call");
 
-    const final = calls.find((c) => c.name === opts.finalTool);
-    if (final) {
-      toolCalls.push(opts.finalTool);
-      return { output: (final.args ?? {}) as T, model, toolCalls };
+    const finalCalls = calls.filter((c) => finals.has(c.name as ToolName));
+    if (finalCalls.length > 0) {
+      const outputs = finalCalls.map((c) => ({ name: c.name as ToolName, args: (c.args ?? {}) as T }));
+      toolCalls.push(...outputs.map((o) => o.name));
+      return { output: outputs[0].args, outputs, model, toolCalls };
     }
 
     const modelTurn = res.response.candidates?.[0]?.content;
@@ -181,5 +186,5 @@ export async function runAgent<T>(opts: {
     );
     contents.push({ role: "user", parts: responses });
   }
-  throw new Error(`Agent did not call ${opts.finalTool} within the step limit`);
+  throw new Error(`Agent did not call ${[...finals].join("/")} within the step limit`);
 }

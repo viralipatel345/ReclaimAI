@@ -24,6 +24,10 @@ function read(): Case | null {
   return current;
 }
 
+export function getCase(): Case | null {
+  return read();
+}
+
 export function setCase(next: Case | null) {
   current = next;
   localMirror.save(next);
