@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { SendReview } from "@/components/SendReview";
@@ -48,7 +49,14 @@ function RequestsView({ c }: { c: Case }) {
       <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">
         {n > 0 ? `${n} request${n === 1 ? "" : "s"} ready to send` : "All requests sent"}
       </h1>
-      <p className="mt-2 max-w-[62ch] text-muted">Each request uses a fixed legal template with your signature. Only the greeting is written by AI.</p>
+      <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <p className="max-w-[62ch] text-muted">Each request uses a fixed legal template with your signature. Only the greeting is written by AI.</p>
+        {demo && (
+          <Link href="/case/detect" className={`${btnSecondary} shrink-0 border-accent text-accent`}>
+            <Icon name="search" size={15} /> Live detection
+          </Link>
+        )}
+      </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid grid-cols-1 content-start gap-5 md:grid-cols-2">
