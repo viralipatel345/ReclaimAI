@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Check, Link2, LogOut, Phone, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Check, Link2, Lock, LogOut, Phone, ShieldCheck } from 'lucide-react';
+import { GmailConnect } from './GmailConnect';
+import { IdentityVerifier } from './IdentityVerifier';
 
 // Branded onboarding: the app's real age-gate (app/page.tsx) in the red/white system.
 // Adult -> shows the link intake (what /case does next). Minor -> stops, points to NCMEC,
@@ -59,39 +61,64 @@ function UnderEighteen() {
   );
 }
 
+// Mirrors the real app/case/page.tsx exactly: name + email + Sign in with Google (optional)
+// + identity verification (required) beside the links list. canDraft there requires
+// idVerified, a signature, an email, and at least one link -- same gate here.
 function LinkIntake() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [idVerified, setIdVerified] = useState(false);
   const [link, setLink] = useState('');
   const [added, setAdded] = useState<string[]>([]);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const canDraft = name.trim().length >= 2 && emailOk && added.length > 0 && idVerified;
+
   return (
-    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="mx-auto max-w-[640px] px-5 py-14 md:px-8">
+    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="mx-auto max-w-[1000px] px-5 py-14 md:px-8">
       <p className="flex items-center gap-3 text-sm font-semibold text-[#6B7280]"><span className="h-px w-8 bg-[#E1261C]" />Step 01</p>
       <h1 className={`${display} mt-3 text-4xl leading-[1.02] md:text-5xl`}>Tell us where.</h1>
-      <p className="mt-3 text-[#4B5563]">Paste every link you have. Nothing asks what the images show.</p>
-      <div className="mt-8 rounded-3xl bg-[#F5F6F8] p-6">
-        <label htmlFor="link" className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7280]">Paste a link</label>
-        <div className="mt-2 flex items-center gap-2 rounded-2xl bg-white px-4 py-1 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-          <Link2 size={18} className="shrink-0 text-[#9CA3AF]" />
-          <input id="link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" className="h-12 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[#9CA3AF]" inputMode="url" />
-          <button
-            onClick={() => { const v = link.trim(); if (!v) return; setAdded((a) => [...a, v]); setLink(''); }}
-            className="shrink-0 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B3130F]"
-          >
-            Add
+      <p className="mt-3 max-w-[60ch] text-[#4B5563]">Your details and the links. That&rsquo;s all. You never need to describe what they show.</p>
+
+      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <section className="rounded-3xl bg-[#F5F6F8] p-6">
+          <h2 className="text-lg font-[800]">Your details</h2>
+          <p className="mt-1 text-xs text-[#6B7280]">Requests go out under this name. Platforms reply to this email.</p>
+          <label htmlFor="name" className="mt-5 block text-sm font-semibold">Full name</label>
+          <input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="mt-2 h-11 w-full rounded-xl border border-black/10 bg-white px-4 text-[15px] outline-none focus:border-[#E1261C]" />
+          <label htmlFor="email" className="mt-4 block text-sm font-semibold">Email for replies</label>
+          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value.trim())} autoComplete="email" inputMode="email" className="mt-2 h-11 w-full rounded-xl border border-black/10 bg-white px-4 text-[15px] outline-none focus:border-[#E1261C]" />
+          {email && !emailOk && <p className="mt-1.5 text-xs text-[#B3130F]">That email doesn&rsquo;t look complete.</p>}
+          <div className="mt-4"><GmailConnect onConnected={setEmail} /></div>
+          <IdentityVerifier claimedName={name} onVerified={setIdVerified} />
+          <p className="mt-5 flex items-start gap-2 rounded-xl bg-white p-3 text-xs leading-relaxed text-[#6B7280]">
+            <Lock size={14} className="mt-0.5 shrink-0" /> You&rsquo;ll never be asked what the images show. Reclaim only needs the links.
+          </p>
+        </section>
+
+        <section className="rounded-3xl bg-[#F5F6F8] p-6">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-[800]">Links</h2>
+            <span className="font-mono text-xs text-[#6B7280]">{added.length} added</span>
+          </div>
+          <div className="mt-4 flex items-center gap-2 rounded-2xl bg-white px-4 py-1 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <Link2 size={18} className="shrink-0 text-[#9CA3AF]" />
+            <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Paste a link" className="h-12 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[#9CA3AF]" inputMode="url" />
+            <button onClick={() => { const v = link.trim(); if (!v) return; setAdded((a) => [...a, v]); setLink(''); }} className="shrink-0 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B3130F]">Add</button>
+          </div>
+          {added.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {added.map((u, i) => (
+                <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+                  <Check size={14} className="shrink-0 text-[#E1261C]" /><span className="truncate">{u}</span>
+                </motion.li>
+              ))}
+            </ul>
+          )}
+          <button disabled={!canDraft} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0E1116] px-6 py-3.5 font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-30">
+            Draft my requests <ArrowRight size={18} />
           </button>
-        </div>
-        {added.length > 0 && (
-          <ul className="mt-3 space-y-2">
-            {added.map((u, i) => (
-              <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-                <Check size={14} className="shrink-0 text-[#E1261C]" /><span className="truncate">{u}</span>
-              </motion.li>
-            ))}
-          </ul>
-        )}
-        <button disabled={added.length === 0} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0E1116] px-6 py-3.5 font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-30">
-          Continue to your details <ArrowRight size={18} />
-        </button>
-        <p className="mt-3 text-center text-xs text-[#6B7280]">This is a preview build. The full flow, drafting and sending, runs in the deployed app.</p>
+          <p className="mt-3 text-center text-xs text-[#6B7280]">{idVerified ? 'Identity verified. ' : 'Verify your identity to continue. '}This preview mirrors app/case exactly; drafting and sending run in the deployed app.</p>
+        </section>
       </div>
     </motion.section>
   );
