@@ -7,6 +7,7 @@ import { Landing } from './landing/Landing';
 const NEUTRAL = 'https://www.google.com/search?q=weather';
 
 function quickExit() {
+  try { localStorage.clear(); sessionStorage.clear(); } catch {}
   window.close();
   window.location.replace(NEUTRAL);
 }

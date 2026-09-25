@@ -9,7 +9,8 @@
     ],
     "removedAfterCheck": [
       "'96% of deepfakes are non-consensual': the 2019 Deeptrace report says 96% were pornographic, not non-consensual. Replaced by the 2023 98% figure.",
-      "'300,000+ images removed, 90%+ removal rate' for StopNCII: not found at source. Replaced by SWGfL's published 434,000+ hashes."
+      "'300,000+ images removed, 90%+ removal rate' for StopNCII: not found at source. Replaced by SWGfL's published 434,000+ hashes.",
+      "Fingerprint, reverse image search, face match, SynthID: the app is links-only by design (tests/noImages.test.ts). Removed from the landing 2026-09-25."
     ],
     "linksCheckedOn": "2026-09-25",
     "appTargetsNeedingFix": [
@@ -248,37 +249,41 @@
         "platform": "Reddit",
         "where": "a post in r/exampleforum",
         "url": "https://www.reddit.com/r/exampleforum/comments/q7k2p9/example_post/",
-        "foundBy": "Fingerprint match",
+        "foundBy": "Link you pasted",
         "action": "Removal request under the Act",
         "status": "Removed",
-        "detail": "19h 42m after the request"
+        "detail": "19h 42m after the request",
+        "channel": "form"
       },
       {
         "platform": "X",
         "where": "a repost by @example_account",
         "url": "https://x.com/example_account/status/1839201934817729000",
-        "foundBy": "Reverse image search",
+        "foundBy": "Link you pasted",
         "action": "Removal request under the Act",
         "status": "Overdue",
-        "detail": "Missed 48h. Reminders at 24h and 44h, FTC complaint drafted"
+        "detail": "Missed 48h. Reminders at 24h and 44h, FTC complaint drafted",
+        "channel": "form"
       },
       {
         "platform": "ImgVault",
         "where": "an anonymous upload",
         "url": "https://imgvault.example/v/a7Qx2Lm9",
-        "foundBy": "Reverse image search",
+        "foundBy": "Link you pasted",
         "action": "Removal request by email",
         "status": "Sent",
-        "detail": "48-hour clock running"
+        "detail": "48-hour clock running",
+        "channel": "email"
       },
       {
         "platform": "Google Search",
         "where": "results for her name",
         "url": "https://www.google.com/search?q=%22Jordan%20Ellis%22",
-        "foundBy": "Name search",
+        "foundBy": "Your own-name check, confirmed by you",
         "action": "Ask Google to remove the results",
         "status": "Acknowledged",
-        "detail": "Google confirmed it received the request"
+        "detail": "Google confirmed it received the request",
+        "channel": "form"
       }
     ],
     "timeline": [
@@ -309,6 +314,24 @@
       {
         "t": "48:00",
         "event": "X misses the legal deadline. FTC complaint drafted for Jordan to review"
+      }
+    ],
+    "fastForward": [
+      {
+        "t": "Day 3",
+        "event": "Re-check runs. Every link is read as text only"
+      },
+      {
+        "t": "Day 3",
+        "event": "Reddit: still removed"
+      },
+      {
+        "t": "Day 3",
+        "event": "X: the post is back up. Re-filed automatically, citing the original request. New 48h clock"
+      },
+      {
+        "t": "Day 3",
+        "event": "A new Google result for her name waits in Needs you for her confirmation"
       }
     ]
   },
@@ -345,5 +368,106 @@
       ],
       "sourceCheck": "AOL (Telegraph, 8 Oct 2024) and L'Unione Sarda (1 Jul 2024) opened in a browser on 2026-09-25. Forbes shows a bot wall to the test browser."
     }
+  ],
+  "tagline": "One tap per link, and she never has to touch it again.",
+  "tests": 101,
+  "flow": [
+    {
+      "n": "01",
+      "title": "Tell us where",
+      "text": "Your name, an email for replies, and the links. Nothing asks what the images show."
+    },
+    {
+      "n": "02",
+      "title": "Review requests",
+      "text": "One request per platform. Gemini writes the greeting. Every legal section is fixed text. You sign once."
+    },
+    {
+      "n": "03",
+      "title": "Send",
+      "text": "Email opens ready to send, or the platform's form fields are ready to paste. You send, or give one-time consent to auto-send."
+    },
+    {
+      "n": "04",
+      "title": "Track the 48 hours",
+      "text": "Live clocks. Reminders drafted at 24h and 44h. Miss the deadline and an FTC complaint is drafted from the evidence log."
+    },
+    {
+      "n": "05",
+      "title": "It keeps going",
+      "text": "Re-checks every 3 days. If it comes back, it is re-filed citing the original request. Paste any reply and it is read for you."
+    }
+  ],
+  "tools": [
+    {
+      "name": "Resolver",
+      "tool": "resolve_platform",
+      "does": "Finds the platform's own removal channel, grounded with Google Search. Needs sources and 70% confidence, or it says it couldn't confirm.",
+      "never": "Never sees the link path, only the hostname."
+    },
+    {
+      "name": "Drafter",
+      "tool": "draft_request",
+      "does": "Writes the short greeting at the top of each request. The five legal sections are fixed text.",
+      "never": "Gets platform names only. Never your name, email or links."
+    },
+    {
+      "name": "Watcher",
+      "tool": "draft_reminder, draft_ftc_complaint",
+      "does": "Runs the 48-hour clock, drafts the 24h and 44h reminders, and the FTC complaint if the deadline passes.",
+      "never": "Sees dates and counts only."
+    },
+    {
+      "name": "Rechecker",
+      "tool": "recheck",
+      "does": "Every 3 days reads each page as text, confirms removals, re-files re-uploads.",
+      "never": "Media is stripped before it looks. Unsure means it asks you."
+    },
+    {
+      "name": "Reader",
+      "tool": "parse_reply",
+      "does": "Paste a platform's email and it says removed, acknowledged or rejected. You confirm.",
+      "never": "The reply is classified and discarded, never stored."
+    },
+    {
+      "name": "Detector",
+      "tool": "flag_post",
+      "does": "Scans the account you already reported for more posts, reading captions and comments only. You confirm each match.",
+      "never": "Never opens an image. Demo runs on a sandbox account.",
+      "sandbox": true
+    }
+  ],
+  "safety": [
+    {
+      "title": "Links only",
+      "text": "Never sees, uploads or downloads an image. No vision model. A test proves no path can store image bytes."
+    },
+    {
+      "title": "Never searches for you",
+      "text": "Two lookups exist: which platform a link is on, and your own name on Google, where every result waits for your OK."
+    },
+    {
+      "title": "Never logs in or posts",
+      "text": "Opens the platform's own form with the fields ready. Never contacts the uploader."
+    },
+    {
+      "title": "Under 18? It stops",
+      "text": "Routes to NCMEC's Take It Down, stores nothing, never creates a case."
+    },
+    {
+      "title": "You sign every request",
+      "text": "A fixed good-faith statement and your /s/ signature. The model can never grant consent."
+    },
+    {
+      "title": "Quick exit wipes it",
+      "text": "Esc clears the browser and deletes the server copy, then leaves."
+    }
+  ],
+  "stack": [
+    "Gemini 3.1 Pro, Flash fallback",
+    "Google Search grounding",
+    "Cloud Run",
+    "Cloud Scheduler",
+    "Android share target"
   ]
 }
