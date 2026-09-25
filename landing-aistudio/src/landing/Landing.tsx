@@ -172,7 +172,7 @@ function Hero() {
           <h1 className={`${display} text-[56px] leading-[0.95] md:text-[88px]`}>Take it down.<br /><span className="text-[#E1261C]">Take it back.</span></h1>
           <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-[#6B7280]"><span className="h-2 w-2 rounded-full bg-[#E1261C]" /> For adult survivors of deepfakes and leaked images</div>
           <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-[#4B5563]">
-            99% of deepfake porn depicts women, and most never report it. Paste a link once. Reclaim writes the legal request, sends it with your signature, starts the 48-hour clock, and chases the platform until it&rsquo;s gone.
+            <span className="font-semibold text-[#0E1116]">Reclaim enforces the 48 hours.</span> You paste the link. It files the legal request, runs the clock, chases the platform, and escalates to the FTC when they miss it. It never sees the image.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <motion.a href={APP_URL} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} className="group inline-flex items-center gap-2 rounded-full bg-[#E1261C] px-7 py-3.5 font-semibold text-white shadow-[0_12px_28px_-10px_rgba(225,38,28,0.8)] hover:bg-[#B3130F]">
@@ -350,7 +350,9 @@ function TryIt() {
   const [err, setErr] = useState('');
   const [phase, setPhase] = useState<'idle' | 'resolve' | 'ready' | 'sent'>('idle');
   const [sentAt, setSentAt] = useState(0);
-  const match = FINDINGS.find((f) => text.includes(f.url.replace('https://www.', '').split('/')[0])) ?? FINDINGS[0];
+  const host = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+  const match = FINDINGS.find((f) => host(text) === host(f.url)) ?? FINDINGS[0];
+  const covered = match.platform !== 'Google Search';
   const run = (q?: string) => {
     const v = (q ?? text).trim();
     if (!v) { setErr('Paste a link first, or tap an example.'); return; }
@@ -397,13 +399,13 @@ function TryIt() {
               <ul className="mt-4 grid gap-1.5 sm:grid-cols-2">{SECTIONS.map((x) => <li key={x} className="flex items-center gap-2 text-sm"><Check size={14} className="shrink-0 text-[#E1261C]" />{x}</li>)}</ul>
               {phase === 'ready' ? (
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <button onClick={() => { setSentAt(Date.now()); setPhase('sent'); }} className="inline-flex items-center gap-2 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B3130F]"><Send size={14} /> Send and start the clock</button>
+                  <button onClick={() => { setSentAt(Date.now()); setPhase('sent'); }} className="inline-flex items-center gap-2 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B3130F]"><Send size={14} /> {covered ? 'Send and start the clock' : 'Send the request'}</button>
                   <a href="#how" onClick={() => window.dispatchEvent(new CustomEvent('reclaim:step', { detail: 1 }))} className="rounded-full px-4 py-2 text-sm font-semibold text-[#4B5563] hover:bg-black/[0.04]">See the full request</a>
                 </div>
               ) : (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#0E1116] px-5 py-4 text-white">
-                  <span><span className="block text-xs font-semibold text-white/60">Request sent · demo, nothing left this page</span><span className="block text-sm font-semibold">{match.platform} has 48 hours by law</span></span>
-                  <Clock deadline={sentAt + 48 * 3600e3} className="text-2xl font-[800] text-[#FF6B62]" />
+                  <span><span className="block text-xs font-semibold text-white/60">Request sent · demo, nothing left this page</span><span className="block text-sm font-semibold">{covered ? `${match.platform} has 48 hours by law` : `${match.platform} isn\u2019t covered by the Act. Requested under Google\u2019s own policy, re-checked every 3 days.`}</span></span>
+                  {covered && <Clock deadline={sentAt + 48 * 3600e3} className="text-2xl font-[800] text-[#FF6B62]" />}
                 </motion.div>
               )}
               {phase === 'sent' && (
