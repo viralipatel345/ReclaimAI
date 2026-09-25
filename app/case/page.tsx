@@ -3,7 +3,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { IntakeChat } from "@/components/IntakeChat";
 import { PrivacyCard } from "@/components/StepRail";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
 import { addLink, draftRequests, removeLink } from "@/lib/caseOps";
@@ -38,7 +37,8 @@ function CaseForm({ c }: { c: Case }) {
   const setSignature = (v: string) => updateCase((x) => ({ ...x, attestation: { ...x.attestation, signature: v } }));
 
   const hasNameSearch = c.links.some((l) => l.kind === "name_search");
-  const canDraft = attested && signature.trim().length >= 2 && c.links.length > 0 && checking.size === 0 && !drafting;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.contactEmail);
+  const canDraft = attested && signature.trim().length >= 2 && c.legalName.trim().length >= 2 && emailOk && c.links.length > 0 && checking.size === 0 && !drafting;
 
   const onAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,10 +80,36 @@ function CaseForm({ c }: { c: Case }) {
     <div>
       <Eyebrow>Step 01</Eyebrow>
       <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">Tell us where</h1>
-      <p className="mt-2 max-w-[60ch] text-muted">Share the links. You never need to describe what they show.</p>
+      <p className="mt-2 max-w-[60ch] text-muted">Your details and the links. That’s all — you never need to describe what they show.</p>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <IntakeChat c={c} />
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        <section className={`${card} p-5`} aria-labelledby="details-title">
+          <h2 id="details-title" className="font-display text-xl font-semibold">Your details</h2>
+          <p className="mt-1 text-sm text-muted">Requests go out under this name. Platforms reply to this email — a new address just for this is fine.</p>
+          <label htmlFor="legal-name" className="mt-5 block text-sm font-medium">Full name</label>
+          <input
+            id="legal-name"
+            value={c.legalName}
+            onChange={(e) => updateCase((x) => ({ ...x, legalName: e.target.value }))}
+            autoComplete="name"
+            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-[16px] focus:border-accent focus:outline-none md:text-[15px]"
+          />
+          <label htmlFor="contact-email" className="mt-4 block text-sm font-medium">Email for replies</label>
+          <input
+            id="contact-email"
+            type="email"
+            value={c.contactEmail}
+            onChange={(e) => updateCase((x) => ({ ...x, contactEmail: e.target.value.trim() }))}
+            autoComplete="email"
+            inputMode="email"
+            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-[16px] focus:border-accent focus:outline-none md:text-[15px]"
+          />
+          {c.contactEmail && !emailOk && <p className="mt-2 text-sm text-overdue">That email doesn’t look complete.</p>}
+          <p className="mt-5 flex items-start gap-2 rounded-xl bg-ground p-3 text-xs leading-relaxed text-muted">
+            <Icon name="lock" size={14} className="mt-0.5" />
+            You’ll never be asked what the images show. Reclaim only needs the links.
+          </p>
+        </section>
 
         {/* Links */}
         <section className={`${card} p-5`} aria-labelledby="links-title">
@@ -182,7 +208,7 @@ function CaseForm({ c }: { c: Case }) {
             </button>
             {!canDraft && !drafting && (
               <p className="mt-2 text-center text-xs text-muted">
-                {checking.size > 0 ? "Still finding removal channels…" : "Add at least one link, tick the statement and sign."}
+                {checking.size > 0 ? "Still finding removal channels…" : "Add your name, email and at least one link, then tick the statement and sign."}
               </p>
             )}
           </div>

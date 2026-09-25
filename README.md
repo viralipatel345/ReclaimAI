@@ -16,7 +16,7 @@ The flow: share a link → the legal request is sent → a 48-hour clock starts 
 npm install
 cp env.example .env.local     # add GEMINI_API_KEY; DEMO_MODE=true seeds the fictional case
 npm run dev                   # http://localhost:3000
-npm test                      # 116 tests
+npm test                      # 101 tests
 ```
 
 Requires Node 20.9+ (built and tested on Node 24).
@@ -25,7 +25,7 @@ Requires Node 20.9+ (built and tested on Node 24).
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | yes (for live AI) | Gemini API key from [AI Studio](https://aistudio.google.com/apikey). Server-side only; never logged or sent to the browser. Without it, every AI step falls back to fixed templates / a scripted intake. |
+| `GEMINI_API_KEY` | yes (for live AI) | Gemini API key from [AI Studio](https://aistudio.google.com/apikey). Server-side only; never logged or sent to the browser. Without it, every AI step falls back to fixed templates and rules. |
 | `DEMO_MODE` | no | `true` seeds the fictional case, uses page fixtures for re-checks (no network calls to the demo URLs), and never actually sends anything. |
 | `GEMINI_MODEL` | no | Primary model. Default `gemini-3.1-pro-preview`. |
 | `GEMINI_FALLBACK_MODEL` | no | Used automatically on 429 / 503 / 404. Default `gemini-flash-latest`. |
@@ -42,7 +42,7 @@ All model names live in `lib/config.ts`.
 The demo runs in `DEMO_MODE=true`. Press **Shift+D** on any screen to open the presenter panel. Press **Esc** or click **Quick exit** on any screen to leave instantly.
 
 1. **`/`**: one line about the 48-hour right, then the age check. Choosing *Under 18* routes to NCMEC's Take It Down and stores nothing.
-2. **`/case` Tell us where**: live Gemini intake (it never asks what the images show). Paste a link and it resolves to a platform pill plus a channel. An unknown site is looked up with Google Search. Tick the statement, type a signature, then **Draft my requests** (Gemini writes each greeting).
+2. **`/case` Tell us where**: name, email and links. Nothing asks what the images show. Paste a link and it resolves to a platform pill plus a channel. An unknown site is looked up with Google Search. Tick the statement, type a signature, then **Draft my requests** (Gemini writes each greeting).
 3. **`/case/requests`**: four request cards, the evidence log, and a PDF.
 4. **Live detection** (the button on the requests page): an agent scans a **sandbox, fictional Instagram account**, the same handle as the X uploader.
    - It reads captions, comments and the bio as **text only**. Image tiles show "Not opened".
@@ -72,7 +72,7 @@ Recovery / rehearsal URLs (demo mode only): `/demo?preset=fresh`, `sent`, `simul
 |---|---|
 | **Links only.** No image upload, download or vision model. | No file inputs anywhere; the share target accepts `url`/`text`/`title` only. Re-checks use `lib/pageText.ts`, which sends `Accept: text/html`, refuses any non-text response **without reading its body**, and strips every media tag, attribute and `data:` URI. Only a page title and a status are stored. Gemini's `urlContext` is deliberately not used, because it would let the model fetch pages with images. Tests: `tests/noImages.test.ts`, which is mutation-checked. |
 | **No searching for a person's images.** | Only two searches exist: (1) `resolve_platform`, which sends Google Search the **hostname only**, never the path; (2) the user's **own name**, where every result waits for her confirmation. |
-| **Under-18 → stop.** | The age gate, plus a deterministic check that runs *before* any model call, plus the model's own `isAdult` flag. Any of them routes to NCMEC with `intake: null`, clears storage and deletes the server copy. Test: `tests/intake.test.ts`. |
+| **Under-18 → stop.** | The age gate routes to NCMEC's Take It Down, clears local and session storage, deletes any server copy, and never creates a case; `PUT /api/case` also refuses `isAdult: false`. Test: `tests/ageGate.test.ts`. |
 | **Never create accounts, log in, post, or contact the uploader.** | No such code exists. Form channels only open the platform's form, with copy-paste fields. |
 | **Signed attestation; explicit consent.** | Every request contains the fixed good-faith statement and `/s/` signature. Auto-send requires the one-time consent toggle; the model can never set consent. **Review each before sending** is always available. |
 | **Quick exit everywhere.** | Button + Esc → `window.location.replace("https://weather.com")`. Clears localStorage and sessionStorage and deletes the server copy via `sendBeacon`. |
@@ -88,7 +88,6 @@ Other privacy defaults: `Referrer-Policy: no-referrer`, the app can't be framed 
 
 | Tool | What Gemini does | What it never sees or controls |
 |---|---|---|
-| `collect_intake` | Warm, one-question-at-a-time intake → structured JSON | Can't grant auto-send consent; replies asking about image content are replaced |
 | `resolve_platform` | Separate call **grounded with Google Search**; must return sources, ≥ 0.7 confidence, and a channel on the site's own domain | Never sees the URL path. Otherwise: "Couldn't confirm — use the site's contact page" |
 | `draft_request` / `draft_google_removal` | Short first-person greeting (parallel tool calls) | Gets platform names only. Legal sections come from fixed templates (`lib/templates.ts`) |
 | `draft_reminder` / `draft_ftc_complaint` | One reminder line / the complaint summary | Gets timeline facts only (platform, dates, counts), never name, email or links |
@@ -107,17 +106,17 @@ app/                     Next.js App Router (TypeScript, Tailwind)
   case/                  Tell us where · Review requests · Tracker · FTC complaint
   share/                 PWA share target + paste fallback
   help/under-18/         NCMEC hand-off
-  api/                   intake, resolve, draft, followup, parse-reply, recheck, case, send (stub)
+  api/                   resolve, draft, detect, followup, parse-reply, recheck, case, send (stub)
 lib/
   agent.ts gemini.ts     Agent loop, tool declarations, retry/fallback
-  intake.ts resolve.ts draft.ts followups.ts recheck.ts   Gemini-backed flows (server)
+  resolve.ts draft.ts detectAgent.ts followups.ts recheck.ts   Gemini-backed flows (server)
   caseOps.ts escalation.ts recheckOps.ts demo.ts          Pure case transitions (client + server)
   templates.ts           Fixed legal text (request, Google removal, reminder, FTC complaint)
   pageText.ts            Text-only, SSRF-safe page fetch
   store.ts               CaseStore interface: in-memory server store + localStorage mirror
 data/platforms.json      Removal channel directory (10 platforms + fictional ImgVault)
 data/fixtures.ts         Demo page fixtures (no network in demo mode)
-tests/                   Vitest (116 tests)
+tests/                   Vitest (101 tests)
 ```
 
 State lives in the browser (localStorage) and is mirrored to the server through `PUT /api/case`, so the scheduled recheck agent can see it. Both sit behind the `CaseStore` interface in `lib/store.ts`, so Firestore can replace the in-memory store without touching callers.
