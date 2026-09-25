@@ -204,19 +204,28 @@ function CaseForm({ c }: { c: Case }) {
             text="You’ll see every request and tap send yourself."
           />
           <div className="mt-auto pt-5">
-            <button onClick={onDraft} disabled={!canDraft} className={`${btnPrimary} relative w-full overflow-hidden`}>
-              {autoDraft && canDraft && (
-                <span
-                  aria-hidden="true"
-                  className="anim-fill absolute inset-0 bg-accent-hover"
-                  style={{ ["--fill-ms" as string]: "2200ms" }}
-                  onAnimationEnd={onDraft}
-                />
-              )}
-              <span className="relative flex items-center gap-2">
-                {autoDraft && canDraft ? "Drafting your requests…" : "Draft my requests"} <Icon name="arrow" size={18} />
-              </span>
+            <button onClick={onDraft} disabled={!canDraft} className={`${btnPrimary} w-full`}>
+              Draft my requests <Icon name="arrow" size={18} />
             </button>
+            {autoDraft && canDraft && (
+              // Demo: always on screen, wherever the form is scrolled. Click to go now.
+              <button
+                onClick={onDraft}
+                className="anim-rise fixed inset-x-4 bottom-6 z-40 mx-auto flex max-w-md flex-col gap-2 overflow-hidden rounded-2xl bg-panel px-5 py-4 text-left text-white shadow-2xl"
+              >
+                <span className="flex items-center justify-between gap-3">
+                  <span className="font-display text-lg font-semibold">Drafting {c.links.length} requests…</span>
+                  <span className="text-xs text-panel-muted">Click to go now</span>
+                </span>
+                <span className="h-1 w-full overflow-hidden rounded-full bg-white/15">
+                  <span
+                    className="anim-fill block h-full bg-panel-accent"
+                    style={{ ["--fill-ms" as string]: "2200ms" }}
+                    onAnimationEnd={onDraft}
+                  />
+                </span>
+              </button>
+            )}
             {!canDraft && !drafting && (
               <p className="mt-2 text-center text-xs text-muted">
                 {checking.size > 0 ? "Still finding removal channels…" : "Add your name, email and at least one link, then tick the statement and sign."}
