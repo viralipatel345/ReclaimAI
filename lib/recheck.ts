@@ -6,7 +6,7 @@
 //
 // Gemini's urlContext tool is deliberately NOT used: it would let Google fetch the page for
 // the model, and we couldn't guarantee images are stripped first. We fetch text ourselves.
-import { PAGE_FIXTURES } from "@/data/fixtures";
+import { demoFixture } from "@/data/demoPages";
 import { runAgent } from "./agent";
 import { MODELS } from "./config";
 import { chase } from "./escalation";
@@ -60,9 +60,9 @@ export interface RecheckDeps {
 }
 
 async function checkLink(c: Case, url: string, deps: RecheckDeps): Promise<PageCheck> {
-  const fixture = deps.demo ? PAGE_FIXTURES[url] : undefined;
+  const fixture = deps.demo ? demoFixture(url) : undefined;
   if (fixture) {
-    // Demo: the fictional seed URLs are served from fixtures — never fetched over the network.
+    // Demo: fictional URLs (seed links, sandbox posts) are served from fixtures — never fetched.
     // Any other link (e.g. a team-owned test post for a live demo) is re-checked for real below.
     const state = c.demoPageState?.[url] ?? "live";
     if (state === "unclear") return { status: "unclear", title: fixture.live.title, reason: "Fixture marked unclear.", source: "fixture" };
