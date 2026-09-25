@@ -12,7 +12,10 @@ const CASE = DATA.demoCase;
 const FINDINGS = CASE.findings;
 const REAL_PLATFORMS = DATA.platforms.filter((p) => !p.fictional && p.link);
 const STAT = (v: string) => DATA.stats.find((x) => x.value === v)!;
-const APP_URL = (import.meta.env.VITE_APP_URL as string | undefined) || '#try';
+// 'Start with a link' opens the branded onboarding preview at /start (age gate + link
+// intake, matching app/page.tsx). Set VITE_APP_URL once the real Next.js app is deployed
+// to send people straight into the working flow instead.
+const APP_URL = (import.meta.env.VITE_APP_URL as string | undefined) || '/start';
 const statusTone = (st: string) => st === 'Removed' ? 'bg-[#E7F6EC] text-[#166534]' : st === 'Overdue' ? 'bg-[#0E1116] text-white' : 'bg-[#FDECEA] text-[#B3130F]';
 
 // Brand: white ground, ink #0E1116, one bright red #E1261C (deep #B3130F), heavy Plus Jakarta Sans.
