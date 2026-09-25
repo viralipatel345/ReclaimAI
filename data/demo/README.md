@@ -10,6 +10,7 @@
 | `stats` | Real | Each entry has the source URL and the exact quote it rests on |
 | `resources` | Real | CCRI helpline number confirmed on CCRI's site and third-party directories |
 | `platforms` | Real, except ImgVault | `link` is what the landing shows, checked 25 Sep 2026: opened in a browser where possible, Reddit and Pornhub by server response (the test browser can't open them), Telegram's email confirmed on its FAQ. Each entry's `check` says how. `target` is the app's original value, kept unchanged |
+| `caseStudies` | Real | Public, multi-source reporting. Context only: never add invented details to a real person's case |
 | `demoCase` | Fictional | Jordan Ellis, the posts and the URLs are invented. URLs use example paths or the reserved `.example` domain. Timings follow `lib/demo.ts` and are illustrative, not measured platform performance |
 
 ## Rules for anyone adding content

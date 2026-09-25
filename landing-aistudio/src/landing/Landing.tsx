@@ -194,6 +194,35 @@ function Hero() {
   );
 }
 
+/* ---------- Real case: Meloni (sourced, context only) ---------- */
+
+const MELONI = DATA.caseStudies.find((c) => c.id === 'meloni')!;
+
+function RealCase() {
+  return (
+    <section className="bg-[#0E1116] py-16 text-white">
+      <div className="mx-auto max-w-[1240px] px-5 md:px-8">
+        <p className="text-sm font-semibold text-[#FF6B62]">A real case</p>
+        <h2 className={`${display} mt-3 max-w-[20ch] text-4xl leading-[1.02] md:text-6xl`}>Even a prime minister couldn&rsquo;t get it down fast.</h2>
+        <p className="mt-5 max-w-[60ch] text-lg text-white/70">In 2020, deepfake porn videos of {MELONI.name}, now {MELONI.role}, were posted to a US porn site. She took it to court and called it a form of violence against women.</p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {MELONI.facts.map((f, i) => (
+            <motion.div key={f.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.6, ease: EASE }} className="rounded-3xl border border-white/10 p-6">
+              <p className={`${display} text-4xl text-[#E1261C] md:text-5xl`}>{f.label}</p>
+              <p className="mt-3 text-sm leading-relaxed text-white/70">{f.text}.</p>
+            </motion.div>
+          ))}
+        </div>
+        <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
+          <p className={`${display} max-w-[26ch] text-2xl leading-tight md:text-3xl`}>In the US, platforms now have <span className="text-[#E1261C]">48 hours</span> by law. Reclaim files the request.</p>
+          <a href={MELONI.sources[0]} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold hover:border-white/50">Read the reporting <ArrowRight size={15} /></a>
+        </div>
+        <p className="mt-5 text-xs text-white/40">Public reporting, 2024. Reclaim was not involved in this case.</p>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Process: interactive stepper ---------- */
 
 const STEPS = [
@@ -557,6 +586,7 @@ export function Landing({ onQuickExit }: { onQuickExit: () => void }) {
       <Header onQuickExit={onQuickExit} />
       <main>
         <Hero />
+        <RealCase />
         <Process />
         <HowItSearches />
         <TryIt />
