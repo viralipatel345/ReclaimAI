@@ -78,7 +78,7 @@ function PhoneChat() {
         <div className="relative mt-5 flex flex-col items-center">
           <Mark size={44} />
           <p className="mt-2 text-sm font-[800]">Reclaim</p>
-          <p className="text-[11px] text-[#6B7280]">Private · links only</p>
+          <p className="text-[11px] text-[#6B7280]">Private · never stored</p>
         </div>
         <div className="relative mt-4 flex flex-col gap-2 px-4 text-[12.5px] leading-snug">
           <AnimatePresence initial={false}>
@@ -137,31 +137,28 @@ function FloatCard({ className, delay, icon, title, text }: { className: string;
 
 function Hero() {
   const points = [
-    { icon: <Search size={16} />, title: 'Finds every copy', text: 'Searches the web for your image and deepfakes of you.' },
+    { icon: <Search size={16} />, title: 'Finds every copy', text: 'Forums, image hosts, and search, checked in one pass.' },
     { icon: <Route size={16} />, title: 'Picks the right step', text: 'Platform, police, helpline, or putting the original back.' },
-    { icon: <Timer size={16} />, title: 'Holds them to 48 hours', text: 'Tracks every legal deadline so you don’t have to.' },
+    { icon: <Timer size={16} />, title: 'Holds them to 48 hours', text: 'Missed deadlines go to the FTC, up to $53,088 per violation.' },
   ];
   return (
     <section id="top" className="relative overflow-hidden">
       <div className="pointer-events-none absolute -right-40 -top-40 h-[640px] w-[640px] rounded-full bg-[radial-gradient(closest-side,rgba(225,38,28,0.14),transparent)]" />
-      <div className="relative mx-auto grid max-w-[1240px] items-center gap-14 px-5 pb-20 pt-14 md:px-8 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
+      <div className="relative mx-auto grid max-w-[1240px] items-center gap-10 px-5 pb-14 pt-10 md:px-8 lg:grid-cols-[1.1fr_1fr] lg:pt-14">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE }}>
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#FDECEA] px-3.5 py-1.5 text-xs font-semibold text-[#B3130F]">
-            <Sparkles size={13} /> AI agents · U.S. TAKE IT DOWN Act
-          </span>
-          <h1 className={`${display} mt-6 text-[56px] leading-[0.95] md:text-[88px]`}>
+          <h1 className={`${display} text-[56px] leading-[0.95] md:text-[88px]`}>
             Take it down.<br /><span className="text-[#E1261C]">Take it back.</span>
           </h1>
           <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-[#4B5563]">
-            Reclaim is a team of AI agents for survivors of deepfakes and leaked images. Tell it what happened once. It finds every copy and gets them removed.
+            99% of people targeted by deepfake porn are women, and only 4% ever take it to police. Reclaim&rsquo;s agents find every copy and file the legal removal requests for you. Platforms then have 48 hours.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <a href="#try" className="inline-flex h-13 items-center gap-2 rounded-full bg-[#E1261C] px-7 py-3.5 font-semibold text-white shadow-[0_12px_28px_-10px_rgba(225,38,28,0.8)] transition hover:-translate-y-0.5 hover:bg-[#B3130F]">
               Start a chat <ArrowRight size={18} />
             </a>
             <a href="#how" className="inline-flex items-center gap-2 rounded-full px-5 py-3.5 font-semibold text-[#0E1116] hover:bg-black/[0.04]">See how it works</a>
           </div>
-          <ul className="mt-10 grid gap-4">
+          <ul className="mt-8 grid gap-3">
             {points.map((p, i) => (
               <motion.li key={p.title} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.12, duration: 0.5, ease: EASE }} className="flex items-center gap-4">
                 <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FDECEA] text-[#E1261C]">{p.icon}</span>
@@ -272,11 +269,11 @@ function Process() {
     return () => clearTimeout(t);
   }, [i, paused]);
   return (
-    <section id="how" className="bg-[#F5F6F8] py-24">
+    <section id="how" className="bg-[#F5F6F8] py-16">
       <div className="mx-auto max-w-[1240px] px-5 md:px-8">
         <p className="text-sm font-semibold text-[#E1261C]">How it works</p>
         <h2 className={`${display} mt-3 max-w-[16ch] text-4xl leading-[1.02] md:text-6xl`}>Five steps. You make one decision.</h2>
-        <div className="mt-12 grid gap-8 lg:grid-cols-[380px_1fr]">
+        <div className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
           <ol className="space-y-2" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
             {STEPS.map((s, n) => (
               <li key={s.key}>
@@ -323,7 +320,7 @@ function TryIt() {
     setTimeout(() => setPhase('done'), 2600);
   };
   return (
-    <section id="try" className="relative overflow-hidden py-24">
+    <section id="try" className="relative overflow-hidden py-16">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(225,38,28,0.16),transparent)]" />
       <div className="relative mx-auto max-w-[760px] px-5 text-center">
         <Mark size={52} />
@@ -400,12 +397,46 @@ function AgentCard({ a, i }: { a: (typeof AGENTS)[number]; i: number }) {
 
 function Agents() {
   return (
-    <section id="agents" className="bg-[#F5F6F8] py-24">
+    <section id="agents" className="bg-[#F5F6F8] py-16">
       <div className="mx-auto max-w-[1240px] px-5 md:px-8">
         <p className="text-sm font-semibold text-[#E1261C]">Your team</p>
         <h2 className={`${display} mt-3 max-w-[18ch] text-4xl leading-[1.02] md:text-6xl`}>Five agents working while you rest.</h2>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {AGENTS.map((a, i) => <AgentCard key={a.name} a={a} i={i} />)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Measure points ---------- */
+
+const METRICS = [
+  { label: 'Time to first request', value: '6 min', note: 'From first message to a removal request ready to approve.' },
+  { label: 'Copies found per case', value: '3', note: 'Every place the Finder located, not only the link you had.' },
+  { label: 'Removed within 48 hours', value: '2 of 3', note: 'Tracked against each platform’s legal deadline.' },
+  { label: 'Hours to removal', value: '19h', note: 'The fastest platform in this case. Misses are escalated.' },
+];
+
+function Measure() {
+  return (
+    <section className="py-16">
+      <div className="mx-auto max-w-[1240px] px-5 md:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[#E1261C]">What we measure</p>
+            <h2 className={`${display} mt-3 max-w-[18ch] text-4xl leading-[1.02] md:text-6xl`}>Every case, counted in hours.</h2>
+          </div>
+          <span className="rounded-full bg-[#F5F6F8] px-3 py-1 text-xs font-semibold text-[#6B7280]">Example case</span>
+        </div>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {METRICS.map((m, i) => (
+            <motion.div key={m.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.6, ease: EASE }} className="rounded-3xl border border-black/5 p-6">
+              <p className="text-sm font-semibold text-[#6B7280]">{m.label}</p>
+              <p className={`${display} mt-3 text-5xl`}>{m.value}</p>
+              <p className="mt-3 text-sm leading-relaxed text-[#4B5563]">{m.note}</p>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
@@ -417,27 +448,28 @@ function Agents() {
 function Stats() {
   return (
     <section className="bg-[#0E1116] py-20 text-white">
-      <div className="mx-auto grid max-w-[1240px] gap-10 px-5 md:grid-cols-3 md:px-8">
-        {[['48h', 'What platforms now have by federal law to remove a reported image.'], ['4%', 'Of people who called a helpline about image abuse also went to police.'], ['0', 'Images Reclaim ever sees. It works with links only.']].map(([n, t]) => (
+      <div className="mx-auto grid max-w-[1240px] gap-10 px-5 sm:grid-cols-2 md:px-8 lg:grid-cols-4">
+        {[['99%', 'of people targeted in deepfake porn are women.'], ['96%', 'of deepfakes online are sexually explicit and made without consent.'], ['4%', 'of people who called a helpline about image abuse also went to police.'], ['48h', 'is how long platforms now have by federal law to remove it.']].map(([n, t]) => (
           <motion.div key={n} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: EASE }}>
-            <p className={`${display} text-7xl text-[#E1261C] md:text-8xl`}>{n}</p>
-            <p className="mt-3 max-w-[32ch] text-white/70">{t}</p>
+            <p className={`${display} text-6xl text-[#E1261C] md:text-7xl`}>{n}</p>
+            <p className="mt-3 max-w-[30ch] text-white/70">{t}</p>
           </motion.div>
         ))}
       </div>
+      <p className="mx-auto mt-10 max-w-[1240px] px-5 text-xs text-white/45 md:px-8">Sources: UN Women (2026), Sensity AI, Revenge Porn Helpline (UK), U.S. TAKE IT DOWN Act and FTC enforcement guidance.</p>
     </section>
   );
 }
 
 function Closing() {
   return (
-    <section className="relative overflow-hidden bg-[#E1261C] py-24 text-white">
+    <section className="relative overflow-hidden bg-[#E1261C] py-16 text-white">
       <div className="pointer-events-none absolute -right-24 top-1/2 h-[520px] w-[520px] -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(255,120,110,0.55),transparent)]" />
       <div className="relative mx-auto flex max-w-[1240px] flex-col items-start gap-8 px-5 md:flex-row md:items-end md:justify-between md:px-8">
         <h2 className={`${display} max-w-[14ch] text-5xl leading-[0.98] md:text-7xl`}>One chat to start. You stay in control.</h2>
         <div className="flex flex-col gap-4">
           <a href="#try" className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-7 py-4 font-semibold text-[#E1261C] transition hover:-translate-y-0.5">Start a chat <ArrowRight size={18} /></a>
-          <p className="flex items-center gap-2 text-sm text-white/85"><Lock size={14} /> Nothing sends without your okay · Esc to leave</p>
+          <p className="flex items-center gap-2 text-sm text-white/85"><Lock size={14} /> Nothing sends without your okay · Never stored · Esc to leave</p>
         </div>
       </div>
     </section>
@@ -464,6 +496,7 @@ export function Landing({ onQuickExit }: { onQuickExit: () => void }) {
         <Process />
         <TryIt />
         <Agents />
+        <Measure />
         <Stats />
         <Closing />
       </main>
