@@ -2,7 +2,8 @@
 // status event so the Reports + Status tab follows along in real time.
 import { newId } from "../ids";
 import { submitToParasell } from "../parasell/client";
-import { scanUrl, type ScanOutput } from "../provenance";
+import { scanMedia, scanUrl, type ScanOutput } from "../provenance";
+import { reverseImageSearch } from "./imageSearch";
 import { analyzeCase, inputFromCase } from "./orchestrator";
 import { runDiscoverScrape } from "./scrape";
 import { incidentStore, statusEvent, transition, type IncidentStore } from "./store";
@@ -31,7 +32,7 @@ export function cleanReporter(raw: unknown, at: string): Reporter | undefined {
 export async function createReport(user: User, input: { branch: ReportBranch; title: string; notes?: string; reporter?: Reporter }, store: IncidentStore = incidentStore): Promise<CaseReport> {
   const at = new Date().toISOString();
   const id = newId("case");
-  const evt = statusEvent(id, "DRAFT", input.branch === "DISCOVER" ? "Automated discovery started." : "Report created.", at);
+  const evt = statusEvent(id, "DRAFT", input.branch === "DISCOVER" ? "Automated discovery started." : input.branch === "IMAGE_SEARCH" ? "Image received for web search." : "Report created.", at);
   const c: CaseReport = {
     id,
     userId: user.id,
@@ -76,6 +77,34 @@ export async function runDiscovery(c: CaseReport, query: string, seedUrls: strin
   next = attachScans(next, results.filter((r): r is ScanOutput => !!r));
 
   return transition(next, "SCANNING", `Discovery found ${scrape.sources.length} source(s) and checked ${results.filter(Boolean).length} media file(s).`, store);
+}
+
+/** Branch C: provenance-scan the uploaded image, find where it appears online, classify each host. */
+export async function runImageSearch(c: CaseReport, input: { buffer: Buffer; mimeType: string }, store: IncidentStore = incidentStore, opts: { demo?: boolean; fetchImpl?: typeof fetch } = {}): Promise<CaseReport> {
+  const scan = await scanMedia({ buffer: input.buffer, mimeType: input.mimeType, caseId: c.id });
+  let next = attachScans(c, [scan]);
+  const flagged = scan.verification.verdict === "ai_generated" || scan.verification.verdict === "likely_ai";
+  next = await transition(next, "SCANNING", `Image fingerprinted and checked for AI provenance${flagged ? " — flagged" : ""}. Searching the web for it.`, store);
+
+  const search = await reverseImageSearch(input.buffer, scan.asset.id, opts);
+  const scrape = {
+    id: newId("scr"),
+    caseId: c.id,
+    decision: "DISCOVER" as const,
+    query: "reverse image search",
+    sources: search.matches.map((m) => ({ url: m.pageUrl, title: m.title ?? m.host, snippet: `${m.risk} · ${m.matchType} match · ${m.reasons.join("; ")}`, fetchedAt: search.searchedAt })),
+    mediaUrls: search.matches.map((m) => m.url),
+    startedAt: search.searchedAt,
+    completedAt: search.searchedAt,
+  };
+  next = { ...next, imageSearch: search, scrape };
+
+  const shady = search.matches.filter((m) => m.risk === "shady").length;
+  const normal = search.matches.filter((m) => m.risk === "normal").length;
+  const line = search.matches.length
+    ? `Found your image on ${search.matches.length} page${search.matches.length === 1 ? "" : "s"}: ${shady} shady, ${normal} known platform${normal === 1 ? "" : "s"}, ${search.matches.length - shady - normal} unfamiliar${search.provider === "fixture" ? " (demo fixture)" : ""}.`
+    : "No copies of your image found on the web right now. Reclaim can re-check later.";
+  return transition(next, "SCANNING", line, store);
 }
 
 export async function recordScans(c: CaseReport, outputs: ScanOutput[], store: IncidentStore = incidentStore): Promise<CaseReport> {

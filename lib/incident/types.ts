@@ -2,7 +2,7 @@
 // Shared by client and server; nothing here performs I/O.
 
 export type AuthProvider = "auth0" | "firebase" | "supabase";
-export type ReportBranch = "MANUAL" | "DISCOVER";
+export type ReportBranch = "MANUAL" | "DISCOVER" | "IMAGE_SEARCH";
 export type CaseStatus = "DRAFT" | "SCANNING" | "ANALYZED" | "ESCALATED" | "SEALED" | "CLOSED";
 export type MediaKind = "image" | "video" | "audio";
 export type ProvenanceVerdict = "ai_generated" | "likely_ai" | "no_signal" | "inconclusive";
@@ -88,6 +88,34 @@ export interface ScrapeData {
   completedAt?: string;
 }
 
+export type MatchType = "full" | "partial" | "similar";
+/** shady: leak/explicit signals · normal: known platform with a removal channel · unknown: no signals either way. */
+export type MatchRisk = "shady" | "normal" | "unknown";
+
+export interface ImageMatch {
+  /** The matching image file. */
+  url: string;
+  /** The page it appears on (what a takedown notice cites). */
+  pageUrl: string;
+  host: string;
+  title?: string;
+  matchType: MatchType;
+  risk: MatchRisk;
+  reasons: string[];
+  /** Directory platform name when the host is known. */
+  platformName?: string;
+  coveredByAct?: boolean;
+  foundAt: string;
+}
+
+export interface ImageSearch {
+  assetId: string;
+  provider: "vision" | "fixture";
+  labels: string[];
+  matches: ImageMatch[];
+  searchedAt: string;
+}
+
 export type AgentActionType = "add_evidence" | "call_helpline" | "notify_friends_family" | "report_police" | "report_parasell";
 export type ActionPriority = "now" | "soon" | "optional";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
@@ -171,6 +199,8 @@ export interface ReportAction {
   destination: string;
   reference?: string;
   artifact?: ReportArtifact;
+  /** Platform notices only: the content URL the notice cites. */
+  url?: string;
   /** Platform notices only: sentAt + 48h. */
   deadlineAt?: string;
   error?: string;
@@ -193,6 +223,7 @@ export interface CaseReport {
   assets: MediaAsset[];
   verifications: VerificationResult[];
   scrape?: ScrapeData;
+  imageSearch?: ImageSearch;
   suggestions?: AgentSuggestions;
   escalations: ParasellEscalation[];
   reports: ReportAction[];

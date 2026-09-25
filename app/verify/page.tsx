@@ -8,7 +8,7 @@ import { useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, Eyebrow, Modal } from "@/components/ui";
 import { CHANNEL_ORDER, CHANNELS, REPORT_STATUS_LABEL } from "@/lib/incident/channels";
 import { incidentApi, type StatusRow } from "@/lib/incident/client";
-import type { AgentAction, CaseReport, CaseStatus, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, StatusEvent, VerificationResult } from "@/lib/incident/types";
+import type { AgentAction, CaseReport, CaseStatus, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, StatusEvent, VerificationResult } from "@/lib/incident/types";
 import { clockTime, shortDateTime } from "@/lib/time";
 
 const STEPS = ["Report", "Verify", "Act", "File", "Seal"] as const;
@@ -90,7 +90,7 @@ export default function VerifyPage() {
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <ReportCard c={c} busy={busy} run={run} onReset={() => { setCase(null); setError(null); }} />
-          <EvidenceCard c={c} busy={busy} run={run} fileRef={fileRef} />
+          <EvidenceCard c={c} busy={busy} run={run} fileRef={fileRef} onFile={fileChannel} />
           <ActionsCard c={c} busy={busy} run={run} onAddEvidence={() => fileRef.current?.click()} onFile={fileChannel} />
           <FileCard c={c} busy={busy} onFile={fileChannel} onShow={setArtifact} />
           <SealCard c={c} busy={busy} run={run} />
@@ -121,17 +121,19 @@ const stamp = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour:
 // ---------- 01 Report ----------
 
 function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: string | null; run: Run; onReset: () => void }) {
-  const [branch, setBranch] = useState<"MANUAL" | "DISCOVER">("MANUAL");
+  const [branch, setBranch] = useState<CaseReport["branch"]>("MANUAL");
   const [title, setTitle] = useState("Someone posted my photos");
   const [notes, setNotes] = useState("My ex keeps posting them and says he wants money. I'm scared and can't sleep.");
   const [query, setQuery] = useState("");
   const [seed, setSeed] = useState("");
+  const [image, setImage] = useState<File | null>(null);
   const [reporter, setReporter] = useState<Reporter>({ legalName: "Jane Doe", contactEmail: "jane.doe@example.com", signature: "Jane Doe" });
 
   if (c) {
+    const shady = c.imageSearch?.matches.filter((m) => m.risk === "shady").length ?? 0;
     return (
       <section className={`${card} p-5 md:p-6`}>
-        <SectionHead n="01" title={c.branch === "DISCOVER" ? "Agent discovery" : "Your report"} hint={c.id} />
+        <SectionHead n="01" title={c.branch === "DISCOVER" ? "Agent discovery" : c.branch === "IMAGE_SEARCH" ? "Image search" : "Your report"} hint={c.id} />
         <p className="mt-3 font-medium">{c.title}</p>
         {c.notes && <p className="mt-1 text-sm leading-relaxed text-muted">{c.notes}</p>}
         {c.reporter && (
@@ -139,7 +141,14 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
             Notices go out under {c.reporter.legalName} · {c.reporter.contactEmail} · signed “{c.reporter.signature}”
           </p>
         )}
-        {c.scrape && (
+        {c.imageSearch && (
+          <p className="mt-3 flex items-center gap-2 text-sm text-muted">
+            <Icon name="eye" size={15} className="text-accent" />
+            Found on {c.imageSearch.matches.length} page{c.imageSearch.matches.length === 1 ? "" : "s"}
+            {shady > 0 && <span className="font-medium text-overdue">· {shady} shady</span>}
+          </p>
+        )}
+        {c.scrape && !c.imageSearch && (
           <p className="mt-3 flex items-center gap-2 text-sm text-muted">
             <Icon name="search" size={15} className="text-accent" />
             Decision <span className="font-mono text-xs uppercase text-accent">{c.scrape.decision}</span> · {c.scrape.sources.length} source{c.scrape.sources.length === 1 ? "" : "s"}, {c.scrape.mediaUrls.length} media reference{c.scrape.mediaUrls.length === 1 ? "" : "s"}
@@ -153,16 +162,20 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
   }
 
   const isManual = branch === "MANUAL";
-  const canSubmit = (isManual ? title.trim().length >= 3 : query.trim().length >= 3) && reporter.legalName.trim().length >= 2 && /\S+@\S+\.\S+/.test(reporter.contactEmail) && reporter.signature.trim().length >= 2;
+  const primaryOk = branch === "MANUAL" ? title.trim().length >= 3 : branch === "DISCOVER" ? query.trim().length >= 3 : !!image;
+  const canSubmit = primaryOk && reporter.legalName.trim().length >= 2 && /\S+@\S+\.\S+/.test(reporter.contactEmail) && reporter.signature.trim().length >= 2;
   const field = (k: keyof Reporter) => ({ value: reporter[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => setReporter({ ...reporter, [k]: e.target.value }) });
+  const submitLabel = branch === "MANUAL" ? "Create report" : branch === "DISCOVER" ? "Start discovery" : "Search the web";
+  const busyLabel = branch === "MANUAL" ? "Creating…" : branch === "DISCOVER" ? "Searching…" : "Searching the web…";
 
   return (
     <section className={`${card} p-5 md:p-6`}>
       <SectionHead n="01" title="Report" hint="Signed in · human check passed" />
-      <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-ground p-1" role="tablist">
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-ground p-1" role="tablist">
         {[
           { v: "MANUAL" as const, label: "I'll report it", icon: "pen" as IconName },
-          { v: "DISCOVER" as const, label: "Let the agent search", icon: "search" as IconName },
+          { v: "DISCOVER" as const, label: "Agent searches", icon: "search" as IconName },
+          { v: "IMAGE_SEARCH" as const, label: "Find my image", icon: "eye" as IconName },
         ].map((o) => (
           <button
             key={o.v}
@@ -186,6 +199,21 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
             <label className="block text-sm font-medium">
               Anything else you want the agent to know <span className="font-normal text-muted">(never what the images show)</span>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${input} mt-1.5 resize-y`} />
+            </label>
+          </>
+        ) : branch === "IMAGE_SEARCH" ? (
+          <>
+            <p className="text-sm leading-relaxed text-muted">
+              Upload the image once. Reclaim checks it for AI provenance, then searches the web for every page it appears on and flags which sites look shady. The file is sent to the search provider for matching and never stored by Reclaim.
+            </p>
+            <label className={`${btnSecondary} h-12 w-full cursor-pointer justify-start`}>
+              <Icon name="plus" size={16} />
+              {image ? image.name : "Choose the image"}
+              <input type="file" accept="image/*" className="sr-only" onChange={(e) => setImage(e.target.files?.[0] ?? null)} />
+            </label>
+            <label className="block text-sm font-medium">
+              Anything the agent should know <span className="font-normal text-muted">(optional — never what the image shows)</span>
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={`${input} mt-1.5 resize-y`} />
             </label>
           </>
         ) : (
@@ -224,19 +252,21 @@ function ReportCard({ c, busy, run, onReset }: { c: CaseReport | null; busy: str
       <button
         disabled={!canSubmit || !!busy}
         onClick={() =>
-          run(isManual ? "report" : "discover", async () =>
-            isManual ? (await incidentApi.createReport(title, notes, reporter)).case : (await incidentApi.discover(query, seed.trim() ? [seed.trim()] : [], reporter)).case,
-          )
+          run("report", async () => {
+            if (branch === "MANUAL") return (await incidentApi.createReport(title, notes, reporter)).case;
+            if (branch === "DISCOVER") return (await incidentApi.discover(query, seed.trim() ? [seed.trim()] : [], reporter)).case;
+            return (await incidentApi.search({ file: image!, title: "Where is my image?", notes, reporter })).case;
+          })
         }
         className={`${btnPrimary} mt-5 w-full sm:w-auto`}
       >
-        {busy === "report" || busy === "discover" ? (
+        {busy === "report" ? (
           <>
-            {spin} {isManual ? "Creating…" : "Searching…"}
+            {spin} {busyLabel}
           </>
         ) : (
           <>
-            {isManual ? "Create report" : "Start discovery"} <Icon name="arrow" size={16} />
+            {submitLabel} <Icon name="arrow" size={16} />
           </>
         )}
       </button>
@@ -261,7 +291,7 @@ function Pill({ label, cls, icon }: { label: string; cls: string; icon?: IconNam
   );
 }
 
-function EvidenceCard({ c, busy, run, fileRef }: { c: CaseReport | null; busy: string | null; run: Run; fileRef: React.RefObject<HTMLInputElement | null> }) {
+function EvidenceCard({ c, busy, run, fileRef, onFile }: { c: CaseReport | null; busy: string | null; run: Run; fileRef: React.RefObject<HTMLInputElement | null>; onFile: (ch: ReportChannel, url?: string) => Promise<void> }) {
   const [files, setFiles] = useState<File[]>([]);
   const disabled = !c || c.status === "SEALED";
   return (
@@ -297,7 +327,8 @@ function EvidenceCard({ c, busy, run, fileRef }: { c: CaseReport | null; busy: s
           ))}
         </ul>
       )}
-      {c?.scrape && c.scrape.sources.length > 0 && (
+      {c?.imageSearch && <MatchesList c={c} busy={busy} onFile={onFile} />}
+      {c?.scrape && !c.imageSearch && c.scrape.sources.length > 0 && (
         <div className="mt-5">
           <p className="text-xs uppercase tracking-wider text-muted">Sources the agent found</p>
           <ul className="mt-2 space-y-1">
@@ -309,8 +340,64 @@ function EvidenceCard({ c, busy, run, fileRef }: { c: CaseReport | null; busy: s
           </ul>
         </div>
       )}
-      {c?.scrape && c.scrape.sources.length === 0 && <p className="mt-4 text-sm text-muted">No search provider configured — the scraper ran but found nothing. Upload the media above instead.</p>}
+      {c?.scrape && !c.imageSearch && c.scrape.sources.length === 0 && <p className="mt-4 text-sm text-muted">No search provider configured — the scraper ran but found nothing. Upload the media above instead.</p>}
     </section>
+  );
+}
+
+const RISK_PILL: Record<MatchRisk, { label: string; cls: string; icon: IconName }> = {
+  shady: { label: "Shady site", cls: "bg-overdue-soft text-overdue", icon: "alert" },
+  normal: { label: "Known platform", cls: "bg-removed-soft text-removed", icon: "check" },
+  unknown: { label: "Unfamiliar", cls: "bg-ground text-muted border border-line", icon: "info" },
+};
+
+function MatchesList({ c, busy, onFile }: { c: CaseReport; busy: string | null; onFile: (ch: ReportChannel, url?: string) => Promise<void> }) {
+  const s = c.imageSearch!;
+  return (
+    <div className="mt-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs uppercase tracking-wider text-muted">Where your image appears</p>
+        <span className="text-xs text-muted">
+          {s.provider === "vision" ? "Google Vision web detection" : "demo fixture"}
+          {s.labels.length > 0 && ` · looks like: ${s.labels.join(", ")}`}
+        </span>
+      </div>
+      {s.matches.length === 0 ? (
+        <p className="mt-2 text-sm text-muted">No copies found on the web right now.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-line">
+          {s.matches.map((m) => {
+            const filed = c.reports.find((r) => r.channel === "platform" && r.url === m.pageUrl && r.status !== "failed" && r.status !== "running");
+            const p = RISK_PILL[m.risk];
+            return (
+              <li key={m.pageUrl} className="flex flex-col gap-2 py-3 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    <Pill label={p.label} cls={p.cls} icon={p.icon} />
+                    {m.host}
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted">{m.matchType} match</span>
+                  </p>
+                  {m.title && <p className="mt-0.5 truncate text-sm text-muted">{m.title}</p>}
+                  <p className="mt-0.5 text-xs text-muted">{m.reasons.join(" · ")}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <a href={m.pageUrl} target="_blank" rel="noopener noreferrer" className={btnSecondary}>
+                    <Icon name="external" size={15} /> Open
+                  </a>
+                  {filed ? (
+                    <DonePill r={filed} />
+                  ) : (
+                    <button disabled={!!busy || c.status === "SEALED"} onClick={() => onFile("platform", m.pageUrl)} className={`${btnPrimary} h-10 px-4 text-sm`}>
+                      {busy === "file:platform" ? spin : <Icon name="send" size={15} />} File takedown
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -446,8 +533,9 @@ const CHANNEL_ICON: Record<ReportChannel, IconName> = { platform: "clock", stopn
 
 function FileCard({ c, busy, onFile, onShow }: { c: CaseReport | null; busy: string | null; onFile: (ch: ReportChannel, url?: string) => Promise<void>; onShow: (a: ReportArtifact) => void }) {
   const ready = !!c && c.status !== "SEALED" && (c.verifications.length > 0 || !!c.scrape);
-  const [url, setUrl] = useState("https://imgvault.example/u/jane/3021");
+  const [edited, setEdited] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const url = edited ?? c?.imageSearch?.matches[0]?.pageUrl ?? "https://imgvault.example/u/jane/3021";
   const filed = c?.reports.filter((r) => r.status !== "failed").length ?? 0;
   return (
     <section className={`${card} p-5 md:p-6 ${!ready && c?.status !== "SEALED" ? "opacity-60" : ""}`}>
@@ -476,7 +564,7 @@ function FileCard({ c, busy, onFile, onShow }: { c: CaseReport | null; busy: str
                     </p>
                     <p className="mt-0.5 text-sm leading-relaxed text-muted">{meta.description}</p>
                     {meta.needsUrl && !latest && (
-                      <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… link to the content" disabled={!ready} className={`${input} mt-2 max-w-md font-mono text-xs`} />
+                      <input value={url} onChange={(e) => setEdited(e.target.value)} placeholder="https://… link to the content" disabled={!ready} className={`${input} mt-2 max-w-md font-mono text-xs`} />
                     )}
                     {latest?.deadlineAt && (
                       <p className="mt-1.5 flex items-center gap-1.5 text-xs text-overdue">

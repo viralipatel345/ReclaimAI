@@ -97,7 +97,7 @@ const platform: Runner = async (c, rec, ctx) => {
 
   if (!p.channel || !p.target) {
     rec.step("Use the site's contact page and paste the notice. The 48-hour clock starts when they receive it.");
-    rec.finish("prepared", { artifact, destination: `https://${host}`, reference: p.name });
+    rec.finish("prepared", { artifact, url, destination: `https://${host}`, reference: p.name });
     return;
   }
   if (ctx.demo) {
@@ -105,11 +105,11 @@ const platform: Runner = async (c, rec, ctx) => {
     const deadlineAt = addHours(sentAt, DEADLINE_HOURS);
     rec.step(`Sent to ${p.target} (demo — nothing actually left the app).`);
     rec.step(`48-hour clock started — ${p.name} must remove it by ${shortDateTime(deadlineAt)}.`);
-    rec.finish("simulated", { artifact, destination: p.target, reference: p.name, deadlineAt });
+    rec.finish("simulated", { artifact, url, destination: p.target, reference: p.name, deadlineAt });
     return;
   }
   rec.step(p.channel === "email" ? "Ready to send — opens in your mail app with everything filled in. The clock starts when you send it." : "Ready to submit — the form fields are filled in for you to paste. The clock starts when you submit.");
-  rec.finish("prepared", { artifact, destination: p.target, reference: p.name });
+  rec.finish("prepared", { artifact, url, destination: p.target, reference: p.name });
 };
 
 const stopncii: Runner = async (c, rec, ctx) => {

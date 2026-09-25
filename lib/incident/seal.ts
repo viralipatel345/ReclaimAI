@@ -26,6 +26,7 @@ export function canonicalRecord(c: CaseReport): string {
       .sort((a, b) => a.assetId.localeCompare(b.assetId)),
     scrape: c.scrape ? { query: c.scrape.query, sources: c.scrape.sources.map((s) => s.url).sort() } : null,
     suggestions: c.suggestions ? { riskLevel: c.suggestions.riskLevel, actions: c.suggestions.actions.map((a) => a.type) } : null,
+    imageSearch: c.imageSearch ? { provider: c.imageSearch.provider, matches: c.imageSearch.matches.map((m) => `${m.risk}:${m.matchType}:${m.pageUrl}`).sort() } : null,
     reports: c.reports
       .map((r) => ({ channel: r.channel, status: r.status, reference: r.reference ?? null, steps: r.steps.map((s) => `${s.at} ${s.text}`), completedAt: r.completedAt ?? null }))
       .sort((a, b) => (a.completedAt ?? "").localeCompare(b.completedAt ?? "")),

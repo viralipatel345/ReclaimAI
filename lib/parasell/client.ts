@@ -3,7 +3,7 @@
 // Demo mode simulates the submission so the UI flow works without credentials.
 import { isDemoMode } from "../config";
 import { newId } from "../ids";
-import type { CaseReport, ParasellEscalation } from "../incident/types";
+import type { CaseReport, ParasellEscalation, ReportBranch } from "../incident/types";
 import { provenancePayload } from "../incident/types";
 
 if (typeof window !== "undefined") throw new Error("lib/parasell/client is server-only");
@@ -40,7 +40,7 @@ export async function getParasellToken(): Promise<string> {
 export interface ParasellReportPayload {
   externalReference: string;
   reportedAt: string;
-  branch: "MANUAL" | "DISCOVER";
+  branch: ReportBranch;
   title: string;
   description: string;
   urls: string[];

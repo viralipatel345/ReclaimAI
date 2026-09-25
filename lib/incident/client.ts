@@ -36,6 +36,14 @@ const post = <T>(path: string, body: unknown) => call<T>(path, { method: "POST",
 export const incidentApi = {
   createReport: (title: string, notes: string, reporter: Reporter) => post<{ case: CaseReport }>("/report", { title, notes, reporter }),
   discover: (query: string, seedUrls: string[], reporter: Reporter) => post<{ case: CaseReport; decision: "DISCOVER" }>("/discover", { query, seedUrls, reporter }),
+  search(input: { file: File; title: string; notes: string; reporter: Reporter }) {
+    const fd = new FormData();
+    fd.set("file", input.file);
+    fd.set("title", input.title);
+    fd.set("notes", input.notes);
+    fd.set("reporter", JSON.stringify(input.reporter));
+    return call<{ case: CaseReport }>("/search", { method: "POST", body: fd });
+  },
   file: (caseId: string, channel: ReportChannel, url?: string) => post<{ case: CaseReport; report: ReportAction }>("/file", { caseId, channel, url }),
   scan(caseId: string, files: File[]) {
     const fd = new FormData();

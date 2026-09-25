@@ -20,6 +20,7 @@ enum AuthProvider {
 enum ReportBranch {
   MANUAL
   DISCOVER
+  IMAGE_SEARCH
 }
 
 enum CaseStatus {
@@ -97,6 +98,7 @@ model CaseReport {
   scrape        ScrapeData?
   escalations   ParasellEscalation[]
   reports       ReportAction[]
+  imageMatches  ImageMatch[]
   events        StatusEvent[]
 }
 
@@ -215,10 +217,37 @@ model ReportAction {
   reference   String?
   /// { title, body, mailto?, fields? }
   artifact    Json?
+  url         String?
   deadlineAt  DateTime?
   error       String?
   startedAt   DateTime      @default(now())
   completedAt DateTime?
 
   @@index([caseId, startedAt])
+}
+
+enum MatchRisk {
+  SHADY
+  NORMAL
+  UNKNOWN
+}
+
+/// A page where the uploaded image was found by reverse image search.
+model ImageMatch {
+  id           String     @id @default(cuid())
+  caseId       String
+  case         CaseReport @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  url          String
+  pageUrl      String
+  host         String
+  title        String?
+  /// full | partial | similar
+  matchType    String
+  risk         MatchRisk
+  reasons      String[]
+  platformName String?
+  coveredByAct Boolean?
+  foundAt      DateTime   @default(now())
+
+  @@index([caseId, risk])
 }
