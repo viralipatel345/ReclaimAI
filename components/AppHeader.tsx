@@ -3,16 +3,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { quickExit } from "@/lib/quickExit";
 import { Icon } from "./Icon";
+import { Mark } from "./brand";
 import { useDemoMode } from "./Providers";
 
 export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2.5" aria-label="Reclaim home">
-      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-        <rect width="26" height="26" rx="8" fill="var(--color-accent)" />
-        <path d="M8 18V8h5.2a3.3 3.3 0 010 6.6H8 M12.5 14.6L17.5 18" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      <span className="font-display text-title font-semibold tracking-tight">Reclaim</span>
+      <Mark size={32} />
+      <span className="leading-none">
+        <span className="block text-[19px] font-[800] tracking-[-0.03em]">Reclaim</span>
+        <span className="block text-[9.5px] font-semibold uppercase tracking-[0.22em] text-[#6B7280]">Deepfake takedown agent</span>
+      </span>
     </Link>
   );
 }
@@ -58,7 +59,7 @@ export function LegalNotice() {
         <p className="flex items-center gap-2">
           <Icon name="info" size={14} />
           <span>
-            <strong className="font-semibold text-ink">Not legal advice</strong> — Reclaim prepares requests you send.
+            <strong className="font-semibold text-ink">Not legal advice.</strong> Reclaim prepares requests you send.
           </span>
         </p>
         {demo && <p>Demo mode: all names, accounts and links are fictional. Nothing is actually sent.</p>}
