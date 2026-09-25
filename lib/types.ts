@@ -72,7 +72,8 @@ export interface TakedownRequest {
   subject: string;
   /** Short courteous opening — the only model-written part. */
   opening: string;
-  openingSource?: "gemini" | "template" | "user";
+  /** "pending" while Gemini is still writing it (the template greeting is in the body meanwhile). */
+  openingSource?: "pending" | "gemini" | "template" | "user";
   /** Full rendered text: opening + fixed legal template. */
   body: string;
   status: RequestStatus;

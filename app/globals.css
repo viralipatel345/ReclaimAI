@@ -45,6 +45,38 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Motion that tells the story: short, one purpose each. */
+@keyframes rc-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rc-flip {
+  from { opacity: 0.2; transform: perspective(600px) rotateX(70deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rc-settle {
+  from { transform: scale(0.97); }
+  to { transform: none; }
+}
+@keyframes rc-overdue {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(163 42 42 / 0); }
+  50% { box-shadow: 0 0 0 6px rgb(163 42 42 / 0.16); }
+}
+@keyframes rc-shimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.85; }
+}
+@keyframes rc-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.anim-rise { animation: rc-rise 260ms ease-out both; }
+.anim-flip { animation: rc-flip 280ms ease-out both; transform-origin: top center; }
+.anim-settle { animation: rc-settle 240ms ease-out both; }
+.anim-overdue { animation: rc-overdue 2.4s ease-in-out infinite; }
+.anim-shimmer { animation: rc-shimmer 1.2s ease-in-out infinite; }
+.anim-fill { animation: rc-fill var(--fill-ms, 2200ms) linear both; transform-origin: left center; }
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

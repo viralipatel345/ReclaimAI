@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
 import { btnPrimary, card, Eyebrow } from "@/components/ui";
 import { chooseAge } from "@/lib/ageGate";
+import { resetDemo } from "@/lib/useCase";
+import { useDemoMode } from "@/components/Providers";
 
 const PROMISES: { icon: IconName; title: string; text: string }[] = [
   { icon: "link", title: "Links only", text: "We never see, upload or download images." },
@@ -15,8 +17,14 @@ export default function Landing() {
   const router = useRouter();
   const [age, setAge] = useState<"adult" | "minor" | null>(null);
 
+  const demo = useDemoMode();
   const start = () => {
     if (age) router.push(chooseAge(age));
+  };
+  // Demo: one click to a fresh fictional case; drafting then starts on its own.
+  const startDemo = () => {
+    resetDemo();
+    router.push("/case?auto=1");
   };
 
   return (
@@ -27,12 +35,20 @@ export default function Landing() {
           Platforms have 48 hours to take it down.
         </h1>
         <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-muted md:text-xl">
-          Share a link once. Reclaim sends the legal request, watches the clock, re-checks every three days, and escalates to the FTC if a platform misses its deadline.
+          Share a link once. Reclaim sends the legal request, runs the clock, and escalates to the FTC if they miss it.
         </p>
         <Promises className="mt-10 hidden lg:grid" />
       </section>
 
       <section className={`${card} h-fit p-6 md:p-8`} aria-labelledby="gate-title">
+        {demo && (
+          <div className="mb-6 border-b border-line pb-6">
+            <button onClick={startDemo} className={`${btnPrimary} w-full`}>
+              Start demo <Icon name="arrow" size={18} />
+            </button>
+            <p className="mt-2 text-center text-xs text-muted">Fictional adult case · Jordan Ellis</p>
+          </div>
+        )}
         <h2 id="gate-title" className="font-display text-2xl font-semibold">Before we start</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">Reclaim is for adults. We ask so we can point you to the right help.</p>
         <fieldset className="mt-6 space-y-3">
