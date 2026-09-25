@@ -39,11 +39,11 @@ export function SubmissionPanel({ s }: { s: Submission }) {
         </div>
         <dl className="grid grid-cols-[64px_minmax(0,1fr)] gap-y-1 text-sm">
           <dt className="text-muted">To</dt>
-          <dd className="truncate font-mono text-[13px]">{s.to}</dd>
+          <dd className="truncate font-mono text-caption">{s.to}</dd>
           <dt className="text-muted">Subject</dt>
           <dd>{s.subject}</dd>
         </dl>
-        <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-xl bg-ground p-4 font-sans text-[13px] leading-relaxed">{s.body}</pre>
+        <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-xl bg-ground p-4 font-sans text-caption leading-relaxed">{s.body}</pre>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export function SubmissionPanel({ s }: { s: Submission }) {
               <span className="text-xs font-medium text-muted">{f.label}</span>
               <CopyButton value={f.value} />
             </div>
-            <p className="mt-1 line-clamp-3 whitespace-pre-line break-words font-mono text-[12px]">{f.value}</p>
+            <p className="mt-1 line-clamp-3 whitespace-pre-line break-words font-mono text-caption">{f.value}</p>
           </li>
         ))}
       </ul>

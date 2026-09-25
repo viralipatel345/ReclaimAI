@@ -80,7 +80,7 @@ function CaseForm({ c }: { c: Case }) {
   return (
     <div>
       <Eyebrow>Step 01</Eyebrow>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">Tell us where</h1>
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">Tell us where</h1>
       <p className="mt-2 max-w-[60ch] text-muted">Your details and the links. That’s all — you never need to describe what they show.</p>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
@@ -93,7 +93,7 @@ function CaseForm({ c }: { c: Case }) {
             value={c.legalName}
             onChange={(e) => updateCase((x) => ({ ...x, legalName: e.target.value }))}
             autoComplete="name"
-            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-[16px] focus:border-accent focus:outline-none md:text-[15px]"
+            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-base focus:border-accent focus:outline-none md:text-body"
           />
           <label htmlFor="contact-email" className="mt-4 block text-sm font-medium">Email for replies</label>
           <input
@@ -103,7 +103,7 @@ function CaseForm({ c }: { c: Case }) {
             onChange={(e) => updateCase((x) => ({ ...x, contactEmail: e.target.value.trim() }))}
             autoComplete="email"
             inputMode="email"
-            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-[16px] focus:border-accent focus:outline-none md:text-[15px]"
+            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-base focus:border-accent focus:outline-none md:text-body"
           />
           {c.contactEmail && !emailOk && <p className="mt-2 text-sm text-overdue">That email doesn’t look complete.</p>}
           <p className="mt-5 flex items-start gap-2 rounded-xl bg-ground p-3 text-xs leading-relaxed text-muted">
@@ -127,7 +127,7 @@ function CaseForm({ c }: { c: Case }) {
               placeholder="Paste a link"
               inputMode="url"
               autoComplete="off"
-              className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-[16px] md:text-[13px] placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-base md:text-caption placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
             />
             <button className={`${btnSecondary} h-11`}>
               <Icon name="plus" size={16} /> Add
@@ -140,7 +140,7 @@ function CaseForm({ c }: { c: Case }) {
               <li key={l.id} className="flex items-start gap-3 py-3">
                 <Icon name={l.kind === "name_search" ? "search" : "link"} size={16} className="mt-1 text-muted" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-mono text-[13px]" title={l.url}>
+                  <p className="truncate font-mono text-caption" title={l.url}>
                     {l.kind === "name_search" ? `Google results for “${c.legalName}”` : l.url.replace(/^https?:\/\/(www\.)?/, "")}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -176,8 +176,8 @@ function CaseForm({ c }: { c: Case }) {
         <div>
           <h2 id="sign-title" className="font-display text-xl font-semibold">Sign your requests</h2>
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-ground p-4">
-            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-[#3446A8]" />
-            <span className="text-[15px] leading-relaxed">{ATTESTATION_TEXT}</span>
+            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-accent" />
+            <span className="text-body leading-relaxed">{ATTESTATION_TEXT}</span>
           </label>
           <label htmlFor="sig" className="mt-5 block text-sm font-medium">Type your full name to sign</label>
           <input
@@ -235,7 +235,7 @@ function Toggle({ checked, onChange, title, text }: { checked: boolean; onChange
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4 border-b border-line py-4 first:pt-0">
       <span>
-        <span className="block text-[15px] font-medium">{title}</span>
+        <span className="block text-body font-medium">{title}</span>
         <span className="mt-0.5 block text-sm leading-relaxed text-muted">{text}</span>
       </span>
       <span className="relative mt-0.5 inline-flex shrink-0">

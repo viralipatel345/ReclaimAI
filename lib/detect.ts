@@ -1,7 +1,7 @@
 // Live detection: find more posts on an account the user already reported, using TEXT
 // ONLY — caption, hashtags, comments. Images are never opened, downloaded or analyzed.
 // Nothing is filed until the user confirms each match.
-import { activity, addLink, draftRequests, evidenceFor } from "./caseOps";
+import { activity, addLink, draftRequests } from "./caseOps";
 import type { Case, TakedownRequest } from "./types";
 
 export type MatchLevel = "likely" | "possible" | "unrelated";
@@ -98,7 +98,10 @@ export function addDetectedLinks(c: Case, confirmed: { url: string; caption: str
   next = {
     ...next,
     requests: [...next.requests, ...requests],
-    evidence: [...next.evidence, ...newLinks.map((l) => evidenceFor(l, "logged", at, { note: "Found by live detection; confirmed by you." }))],
+    // addLink already logged each link; annotate those entries instead of logging twice.
+    evidence: next.evidence.map((e) =>
+      e.event === "logged" && e.at === at && newLinks.some((l) => l.url === e.url) ? { ...e, note: "Found by live detection; confirmed by you." } : e,
+    ),
     activity: [
       activity(`Live detection: you confirmed ${fresh.length} post${fresh.length > 1 ? "s" : ""}. ${requests.map((r) => `${r.platformName} request drafted`).join(", ")}.`, "accent", at),
       ...next.activity,

@@ -17,6 +17,23 @@
   --color-panel: #1d1b20;
   --color-panel-line: #34313a;
   --color-panel-muted: #a9a4ae;
+  /* Status tones readable on the dark panel */
+  --color-panel-removed: #6fc39d;
+  --color-panel-overdue: #f3a6a0;
+  --color-panel-accent: #aeb8f0;
+  --color-panel-cached: #e7c46f;
+
+  /* Type scale */
+  --text-micro: 10px;
+  --text-label: 11px;
+  --text-caption: 13px;
+  --text-body: 15px;
+  --text-title: 22px;
+  --text-display-s: 30px;
+  --text-display-m: 36px;
+  --text-display-l: 44px;
+  --text-display-xl: 52px;
+  --text-hero: 72px;
 }
 
 @theme inline {

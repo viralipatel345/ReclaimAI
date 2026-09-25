@@ -148,9 +148,9 @@ function Detector({ c }: { c: Case }) {
     <div>
       <div className="flex flex-wrap items-center gap-3">
         <Eyebrow>Step 02 · Live detection</Eyebrow>
-        <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-[11px] text-muted">Sandbox · fictional account · synthetic data</span>
+        <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-label text-muted">Sandbox · fictional account · synthetic data</span>
       </div>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">Looking for more copies.</h1>
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">Looking for more copies.</h1>
       <p className="mt-2 max-w-[68ch] text-muted">
         An agent checks the account that posted your X link for more posts of you. It reads captions and comments only — it never opens an image — and nothing is filed until you confirm.
       </p>
@@ -169,7 +169,7 @@ function Detector({ c }: { c: Case }) {
                   { n: counts.none, label: "no match", cls: "text-muted" },
                 ].map((x) => (
                   <div key={x.label}>
-                    <p className={`font-display text-[44px] font-semibold leading-none ${x.cls}`}>{x.n}</p>
+                    <p className={`font-display text-display-l font-semibold leading-none ${x.cls}`}>{x.n}</p>
                     <p className="mt-1 text-sm text-muted">{x.label}</p>
                   </div>
                 ))}
@@ -182,8 +182,8 @@ function Detector({ c }: { c: Case }) {
           )}
           <section className="rounded-2xl bg-panel p-5 text-white" aria-label="Agent log">
             <header className="flex items-center justify-between">
-              <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-panel-muted">
-                <span className={`h-2 w-2 rounded-full ${phase === "scanning" ? "animate-pulse bg-[#6FC39D]" : "bg-panel-muted"}`} />
+              <p className="flex items-center gap-2 font-mono text-label uppercase tracking-[0.14em] text-panel-muted">
+                <span className={`h-2 w-2 rounded-full ${phase === "scanning" ? "animate-pulse bg-panel-removed" : "bg-panel-muted"}`} />
                 {phase === "scanning" ? "Agent running · Gemini" : phase === "done" ? "Scan complete" : "Starting"}
               </p>
               {phase === "done" && (
@@ -192,13 +192,13 @@ function Detector({ c }: { c: Case }) {
                 </button>
               )}
             </header>
-            <ol ref={logRef} className={`mt-4 space-y-1.5 ${phase === "done" ? "h-[180px]" : "h-[380px]"} overflow-y-auto font-mono text-[12.5px] leading-relaxed`} aria-live="polite">
+            <ol ref={logRef} className={`mt-4 space-y-1.5 ${phase === "done" ? "h-[180px]" : "h-[380px]"} overflow-y-auto font-mono text-caption leading-relaxed`} aria-live="polite">
               {log.map((l, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="w-12 shrink-0 text-right text-panel-muted tabular">{l.t.toFixed(1)}s</span>
                   <span
                     className={
-                      l.tone === "likely" ? "text-[#F3A6A0]" : l.tone === "possible" ? "text-[#AEB8F0]" : l.tone === "muted" ? "text-panel-muted" : l.tone === "done" ? "text-[#6FC39D]" : ""
+                      l.tone === "likely" ? "text-panel-overdue" : l.tone === "possible" ? "text-panel-accent" : l.tone === "muted" ? "text-panel-muted" : l.tone === "done" ? "text-panel-removed" : ""
                     }
                   >
                     {l.text}
@@ -224,7 +224,7 @@ function Detector({ c }: { c: Case }) {
                           <LevelPill level={d!.level} />
                           <span className="truncate font-mono text-xs text-muted">{p.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
                         </div>
-                        <p className="mt-2 text-[15px]">“{p.caption}”</p>
+                        <p className="mt-2 text-body">“{p.caption}”</p>
                         <p className="mt-1 flex items-start gap-1.5 text-sm text-muted">
                           <Icon name="sparkle" size={13} className="mt-1" /> {d!.explanation}
                         </p>
@@ -288,8 +288,8 @@ function SandboxProfile({ cursor, results, verdicts }: { cursor: number; results
   return (
     <section className="h-fit overflow-hidden rounded-[28px] border-[6px] border-ink bg-surface" aria-label={`Sandbox Instagram account @${a.handle}`}>
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-        <span className="font-mono text-[11px] text-muted">instagram.com/{a.handle}</span>
-        <span className="rounded bg-ground px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">Sandbox</span>
+        <span className="font-mono text-label text-muted">instagram.com/{a.handle}</span>
+        <span className="rounded bg-ground px-1.5 py-0.5 font-mono text-micro uppercase tracking-wider text-muted">Sandbox</span>
       </div>
       <div className="flex items-center gap-4 px-4 py-4">
         <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-line bg-ground text-muted" aria-hidden="true">
@@ -323,7 +323,7 @@ function SandboxProfile({ cursor, results, verdicts }: { cursor: number; results
             <li key={p.id} className={`relative aspect-square ${scanning ? "z-10 outline outline-[3px] -outline-offset-[3px] outline-accent" : ""}`}>
               <div className={`flex h-full w-full flex-col items-center justify-center gap-1 bg-ground text-muted transition-opacity ${d?.level === "unrelated" ? "opacity-40" : ""}`}>
                 <Icon name="lock" size={16} />
-                <span className="text-[9px] uppercase tracking-wider">Not opened</span>
+                <span className="text-micro uppercase tracking-wider">Not opened</span>
               </div>
               {p.kind !== "photo" && (
                 <span className="absolute right-1.5 top-1.5 text-muted" aria-label={p.kind}>
@@ -331,11 +331,11 @@ function SandboxProfile({ cursor, results, verdicts }: { cursor: number; results
                 </span>
               )}
               {scanning && (
-                <span className="absolute inset-x-0 bottom-0 bg-accent py-1 text-center text-[10px] font-medium text-white">Reading text…</span>
+                <span className="absolute inset-x-0 bottom-0 bg-accent py-1 text-center text-micro font-medium text-white">Reading text…</span>
               )}
               {d && d.level !== "unrelated" && !scanning && (
                 <span
-                  className={`absolute inset-x-1.5 bottom-1.5 rounded-md py-0.5 text-center text-[10px] font-semibold ${
+                  className={`absolute inset-x-1.5 bottom-1.5 rounded-md py-0.5 text-center text-micro font-semibold ${
                     v === "no" ? "bg-ink/70 text-white" : d.level === "likely" ? "bg-overdue-line text-white" : "bg-accent text-white"
                   }`}
                 >
@@ -346,7 +346,7 @@ function SandboxProfile({ cursor, results, verdicts }: { cursor: number; results
           );
         })}
       </ul>
-      <p className="px-4 py-3 text-center text-[11px] text-muted">Fictional account. Tiles are never opened — only text is read.</p>
+      <p className="px-4 py-3 text-center text-label text-muted">Fictional account. Tiles are never opened — only text is read.</p>
     </section>
   );
 }
