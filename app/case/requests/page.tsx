@@ -68,7 +68,7 @@ function RequestsView({ c }: { c: Case }) {
       </h1>
       <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <p className="max-w-[62ch] text-muted">Fixed legal template, your signature. Gemini writes only the greeting.</p>
-        {demo && (
+        {c.links.some((l) => l.kind === "content") && (
           <Link href="/case/detect" className={`${btnSecondary} shrink-0 border-accent text-accent`}>
             <Icon name="search" size={15} /> Live detection
           </Link>
