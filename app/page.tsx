@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
-import { btnPrimary, card, Eyebrow } from "@/components/ui";
+import { btnGhost, btnPrimary, card, Eyebrow } from "@/components/ui";
 import { localMirror } from "@/lib/store";
 import { ensureCase } from "@/lib/useCase";
 
@@ -64,6 +65,9 @@ export default function Landing() {
           <Icon name="shield" size={14} className="mt-0.5" />
           Nothing is saved until you add a link. Press Esc at any time to leave this page instantly.
         </p>
+        <Link href="/verify" className={`${btnGhost} mt-4 -ml-2`}>
+          Have the media itself? Verify it and file a report <Icon name="arrow" size={15} />
+        </Link>
       </section>
 
       <Promises className="grid lg:hidden" />
