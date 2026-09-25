@@ -1,0 +1,14 @@
+# Never send secrets or local state into the image
+.env*
+!env.example
+.git
+.next
+node_modules
+coverage
+tests
+*.log
+.DS_Store
+.vercel
+Dockerfile
+.dockerignore
+README.md
