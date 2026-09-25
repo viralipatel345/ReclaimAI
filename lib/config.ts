@@ -3,11 +3,11 @@
 
 export const MODELS = {
   /** Main agent model (intake, drafting openings, classification). */
-  primary: process.env.GEMINI_MODEL ?? "gemini-3.1-pro",
+  primary: process.env.GEMINI_MODEL ?? "gemini-3.1-pro-preview",
   /** Used automatically when the primary model returns 429 / 503. */
-  fallback: process.env.GEMINI_FALLBACK_MODEL ?? "gemini-2.5-flash",
+  fallback: process.env.GEMINI_FALLBACK_MODEL ?? "gemini-flash-latest",
   /** Separate call with the googleSearch grounding tool, used by resolve_platform. */
-  grounding: process.env.GEMINI_GROUNDING_MODEL ?? "gemini-2.5-flash",
+  grounding: process.env.GEMINI_GROUNDING_MODEL ?? "gemini-flash-latest",
 } as const;
 
 export const GEMINI_RETRY = {
