@@ -60,11 +60,12 @@ export interface RecheckDeps {
 }
 
 async function checkLink(c: Case, url: string, deps: RecheckDeps): Promise<PageCheck> {
-  if (deps.demo) {
-    // Demo: fixtures only — no network calls to the (fictional) seed URLs.
-    const fixture = PAGE_FIXTURES[url];
+  const fixture = deps.demo ? PAGE_FIXTURES[url] : undefined;
+  if (fixture) {
+    // Demo: the fictional seed URLs are served from fixtures — never fetched over the network.
+    // Any other link (e.g. a team-owned test post for a live demo) is re-checked for real below.
     const state = c.demoPageState?.[url] ?? "live";
-    if (!fixture || state === "unclear") return { status: "unclear", title: fixture?.live.title ?? "", reason: "No fixture.", source: "fixture" };
+    if (state === "unclear") return { status: "unclear", title: fixture.live.title, reason: "Fixture marked unclear.", source: "fixture" };
     const page = fixture[state];
     return { status: state, title: page.title, reason: page.text, source: "fixture" };
   }
