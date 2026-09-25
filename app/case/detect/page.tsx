@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SANDBOX_ACCOUNT } from "@/data/sandbox";
+import { SANDBOX_ACCOUNT, sandboxAccountFor } from "@/data/sandbox";
 import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnPrimary, card, Eyebrow, Loading } from "@/components/ui";
@@ -41,7 +41,32 @@ export default function DetectPage() {
   if (c === undefined) return <Loading />;
   if (!c) return <p className="text-muted">No active case.</p>;
   if (demo) return <Detector c={c} source={SANDBOX_SOURCE} />;
-  return <FeedLoader c={c} />;
+  return <RealDetect c={c} />;
+}
+
+/** Real mode: the Instagram analyzer (sandbox account built around this case) or a real public feed. */
+function RealDetect({ c }: { c: Case }) {
+  const [mode, setMode] = useState<"instagram" | "feed">("instagram");
+  const known = c.links.find((l) => l.kind === "content")?.url ?? "";
+  const sandbox: Source = { ...SANDBOX_SOURCE, posts: sandboxAccountFor(c.legalName || "Jordan Ellis", known).posts };
+  const tab = (m: typeof mode, label: string) => (
+    <button
+      onClick={() => setMode(m)}
+      aria-pressed={mode === m}
+      className={`rounded-full border px-3.5 py-1.5 text-sm ${mode === m ? "border-accent bg-accent-soft font-medium text-accent" : "border-line bg-surface text-muted hover:text-ink"}`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="What to scan">
+        {tab("instagram", "Instagram analyzer (sandbox)")}
+        {tab("feed", "Real account's public feed")}
+      </div>
+      {mode === "instagram" ? <Detector key="ig" c={c} source={sandbox} /> : <FeedLoader key="feed" c={c} />}
+    </div>
+  );
 }
 
 /** Real mode: find a reported link whose account has a public feed, and read it. */
@@ -141,11 +166,11 @@ function Detector({ c, source }: { c: Case; source: Source }) {
     });
     const found: Detection[] = [];
     if (source.kind === "sandbox") {
-      say(`Opening @${SANDBOX_ACCOUNT.handle} on Instagram (sandbox) — same handle as the X account in your case.`);
+      say(`Opening @${SANDBOX_ACCOUNT.handle} on Instagram (sandbox)${demo ? " — same handle as the X account in your case" : ""}.`);
       await sleep(700);
       say("Images are skipped. Reading text only: bio, captions, comments.", "muted");
       await sleep(700);
-      const known = c.links.find((l) => SANDBOX_ACCOUNT.bio.includes(l.url.replace(/^https?:\/\//, "")));
+      const known = demo ? c.links.find((l) => SANDBOX_ACCOUNT.bio.includes(l.url.replace(/^https?:\/\//, ""))) : c.links.find((l) => l.kind === "content");
       say(known ? `Bio links to ${known.host} — content already in your case.` : "Bio: no links to your case.", known ? "likely" : "muted");
     } else {
       say(`Reading the public feed of ${source.title} (${source.url.replace(/^https?:\/\//, "")}) — the account that posted your link.`);
