@@ -124,6 +124,14 @@ export default function StartPage() {
           >
             Continue <ArrowRight size={18} />
           </button>
+          {age === "adult" && (
+            <button
+              onClick={() => router.push("/verify")}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border-2 border-[#E5E7EB] px-6 py-3 text-sm font-semibold text-[#0E1116] transition hover:border-black/20"
+            >
+              Have the image itself? Verify it and file a report <ArrowRight size={16} />
+            </button>
+          )}
 
           <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-[#6B7280]">
             <ShieldCheck size={14} className="mt-0.5 shrink-0 text-[#E1261C]" />

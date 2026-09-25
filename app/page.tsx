@@ -61,6 +61,7 @@ function Header() {
           <a href="#never" className="hover:text-[#0E1116]">What it never does</a>
           <a href="#try" className="hover:text-[#0E1116]">Try it</a>
           <a href="#agents" className="hover:text-[#0E1116]">Agents</a>
+          <a href="/verify" className="hover:text-[#0E1116]">Verify an image</a>
         </nav>
         <div className="flex items-center gap-2">
           <button onClick={quickExit} className="flex h-10 items-center gap-2 rounded-full border border-black/10 px-4 text-sm font-semibold hover:bg-black/[0.04]">

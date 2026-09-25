@@ -69,8 +69,8 @@ export default function VerifyPage() {
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-16 pt-8 md:px-12 md:pt-10">
       <Eyebrow>Incident verification · SynthID + C2PA + Gemini</Eyebrow>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.05] tracking-tight md:text-[52px]">Verify it. Then act on it.</h1>
-      <p className="mt-3 max-w-[62ch] text-muted">
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">Verify it. Then act on it.</h1>
+      <p className="mt-3 max-w-[62ch] text-body text-muted">
         Report it yourself or let the agent go looking. Reclaim checks the media for AI watermarks and Content Credentials, asks Gemini what to do next, files the reports, and keeps a timestamped record of every step.
       </p>
 
@@ -756,7 +756,7 @@ function HarnessCard({ c, busy, run, demo }: { c: CaseReport | null; busy: strin
             {MANDATE_ACTIONS.map((a) => (
               <li key={a.id}>
                 <label className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 transition-colors ${allowed.includes(a.id) ? "border-accent bg-accent-soft/60" : "border-line"}`}>
-                  <input type="checkbox" checked={allowed.includes(a.id)} onChange={() => toggle(a.id)} disabled={!ready} className="mt-0.5 h-4 w-4 accent-[#3446A8]" />
+                  <input type="checkbox" checked={allowed.includes(a.id)} onChange={() => toggle(a.id)} disabled={!ready} className="mt-0.5 h-4 w-4 accent-accent" />
                   <span>
                     <span className="block text-sm font-medium">{a.label}</span>
                     <span className="block text-xs leading-relaxed text-muted">{a.description}</span>
@@ -909,7 +909,7 @@ function SealCard({ c, busy, run }: { c: CaseReport | null; busy: string | null;
 
 // ---------- Status panel ----------
 
-const STATUS_DOT: Record<CaseStatus, string> = { DRAFT: "bg-panel-muted", SCANNING: "bg-[#8E9BE0]", ANALYZED: "bg-[#8E9BE0]", ESCALATED: "bg-[#F3C77A]", SEALED: "bg-[#6FC39D]", CLOSED: "bg-[#6FC39D]" };
+const STATUS_DOT: Record<CaseStatus, string> = { DRAFT: "bg-panel-muted", SCANNING: "bg-panel-accent", ANALYZED: "bg-panel-accent", ESCALATED: "bg-panel-cached", SEALED: "bg-panel-removed", CLOSED: "bg-panel-removed" };
 
 function StatusPanel({ rows, events, live, demo, activeId }: { rows: StatusRow[]; events: StatusEvent[]; live: boolean; demo: boolean; activeId?: string }) {
   return (
@@ -920,10 +920,10 @@ function StatusPanel({ rows, events, live, demo, activeId }: { rows: StatusRow[]
             <Icon name="eye" size={14} /> Reports + Status
           </span>
           <span className="flex items-center gap-1.5 normal-case tracking-normal">
-            <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-[#6FC39D]" : "bg-panel-muted"}`} /> {live ? "live" : "connecting"}
+            <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-panel-removed" : "bg-panel-muted"}`} /> {live ? "live" : "connecting"}
           </span>
         </p>
-        <p className="mt-3 font-display text-2xl font-semibold leading-snug">{rows.length ? `${rows.length} report${rows.length === 1 ? "" : "s"} on file.` : "Nothing filed yet."}</p>
+        <p className="mt-3 font-display text-title font-semibold leading-snug">{rows.length ? `${rows.length} report${rows.length === 1 ? "" : "s"} on file.` : "Nothing filed yet."}</p>
         {demo && <p className="mt-1 text-sm text-panel-muted">Demo mode: sign-in and sends are simulated.</p>}
       </div>
 
