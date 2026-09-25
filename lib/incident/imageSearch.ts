@@ -168,8 +168,17 @@ export const FIXTURE_AI: Record<string, AiLook> = {
 const FIXTURE_CLEAN: AiLook = { verdict: "no_signal", confidence: 0.12, signs: [], source: "gemini-vision", synthId: "not_detected" };
 const FIXTURE_UNCHECKED: AiLook = { verdict: "unchecked", confidence: 0, signs: ["image not exposed without login"], source: "none", synthId: "unavailable" };
 
+const FIXTURE_ROUND2: WebDetection = {
+  pagesWithMatchingImages: [
+    { url: "https://www.instagram.com/p/D1newAI7x/", pageTitle: "ai.dreams.studio on Instagram: “Jane Doe reimagined ✨ #aiart #midjourney”", fullMatchingImages: [{ url: "https://scontent.cdninstagram.example/v/t51/9.jpg" }] },
+  ],
+};
+FIXTURE_AI["https://www.instagram.com/p/D1newAI7x/"] = { verdict: "ai_generated", confidence: 0.9, signs: ["hands have six fingers", "necklace merges into skin"], source: "gemini-vision", synthId: "not_detected" };
+
 export interface SearchOptions {
   scope?: SearchScope;
+  /** Demo only: later harness rounds surface one extra fixture page so re-checks find something new. */
+  round?: number;
   reporterName?: string;
   demo?: boolean;
   fetchImpl?: typeof fetch;
@@ -185,7 +194,8 @@ export async function reverseImageSearch(buffer: Buffer, assetId: string, opts: 
     detection = await visionWebDetection(buffer, opts.fetchImpl);
     provider = "vision";
   } else if (opts.demo ?? isDemoMode()) {
-    detection = scope === "instagram" ? FIXTURE_INSTAGRAM : FIXTURE_WEB;
+    const base = scope === "instagram" ? FIXTURE_INSTAGRAM : FIXTURE_WEB;
+    detection = (opts.round ?? 0) >= 1 ? { ...base, pagesWithMatchingImages: [...(base.pagesWithMatchingImages ?? []), ...(FIXTURE_ROUND2.pagesWithMatchingImages ?? [])] } : base;
     provider = "fixture";
   } else {
     throw new Error("Reverse image search needs GOOGLE_VISION_API_KEY");

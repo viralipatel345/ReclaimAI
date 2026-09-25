@@ -1,6 +1,6 @@
 // Browser-side calls to /api/incident. In demo mode no session or human token is needed;
 // in production attach `Authorization: Bearer <token>` and `x-human-token` via `headers`.
-import type { AgentSuggestions, CaseReport, CaseStatus, ParasellEscalation, ReportAction, ReportChannel, Reporter, SearchScope, StatusEvent, VerificationResult } from "./types";
+import type { AgentSuggestions, CaseReport, CaseStatus, HarnessRun, MandateAction, ParasellEscalation, ReportAction, ReportChannel, Reporter, SearchScope, StatusEvent, VerificationResult } from "./types";
 
 export interface StatusRow {
   id: string;
@@ -46,6 +46,8 @@ export const incidentApi = {
     fd.set("reporter", JSON.stringify(input.reporter));
     return call<{ case: CaseReport }>("/search", { method: "POST", body: fd });
   },
+  mandate: (input: { caseId: string; enabled: boolean; signature?: string; allowedActions?: MandateAction[]; cadenceHours?: number }) => post<{ case: CaseReport }>("/mandate", input),
+  harness: (caseId: string, now?: number) => post<{ case: CaseReport; run: HarnessRun }>("/harness", { caseId, now }),
   file: (caseId: string, channel: ReportChannel, url?: string) => post<{ case: CaseReport; report: ReportAction }>("/file", { caseId, channel, url }),
   scan(caseId: string, files: File[]) {
     const fd = new FormData();

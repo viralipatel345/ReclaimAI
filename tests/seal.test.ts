@@ -20,6 +20,9 @@ function memStore(): IncidentStore & { map: Map<string, CaseReport> } {
     async listByUser(u) {
       return [...map.values()].filter((c) => c.userId === u);
     },
+    async listDue() {
+      return [];
+    },
   };
 }
 
@@ -47,6 +50,7 @@ const draft: CaseReport = {
   ],
   escalations: [],
   reports: [],
+  harnessRuns: [],
   events: [{ id: "evt_0", caseId: "case_draft", status: "DRAFT", text: "created", at }],
   createdAt: at,
   updatedAt: at,

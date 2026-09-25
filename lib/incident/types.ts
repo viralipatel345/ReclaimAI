@@ -240,6 +240,44 @@ export interface ReportAction {
   completedAt?: string;
 }
 
+export type MandateAction = "platform_notice" | "stopncii" | "ftc_after_deadline" | "parasell";
+
+/** The user's standing authorization for the agent to act without asking each time. */
+export interface Mandate {
+  enabled: boolean;
+  allowedActions: MandateAction[];
+  cadenceHours: number;
+  maxNoticesPerRun: number;
+  /** The attestation the user signed, verbatim. */
+  text: string;
+  signature: string;
+  grantedAt: string;
+  revokedAt?: string;
+}
+
+export interface HarnessDecision {
+  at: string;
+  /** auto: the agent did it · needs_you: outside the mandate, waiting on the user · skipped: nothing to do / blocked. */
+  kind: "auto" | "needs_you" | "skipped";
+  action: MandateAction | "recheck";
+  target?: string;
+  reason: string;
+  reportId?: string;
+}
+
+export interface HarnessRun {
+  id: string;
+  caseId: string;
+  trigger: "manual" | "schedule";
+  startedAt: string;
+  finishedAt: string;
+  /** Pages examined on this run. */
+  considered: number;
+  newAiMatches: number;
+  decisions: HarnessDecision[];
+  nextCheckAt: string;
+}
+
 export interface CaseReport {
   id: string;
   userId: string;
@@ -248,6 +286,9 @@ export interface CaseReport {
   title: string;
   notes: string;
   reporter?: Reporter;
+  mandate?: Mandate;
+  harnessRuns: HarnessRun[];
+  nextCheckAt?: string;
   isDraft: boolean;
   originalId?: string;
   recordHash?: string;

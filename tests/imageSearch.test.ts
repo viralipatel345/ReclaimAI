@@ -139,6 +139,9 @@ describe("runImageSearch", () => {
       async listByUser(u) {
         return [...map.values()].filter((c) => c.userId === u);
       },
+      async listDue() {
+        return [];
+      },
     };
   }
   const draft: CaseReport = {
@@ -154,6 +157,7 @@ describe("runImageSearch", () => {
     verifications: [],
     escalations: [],
     reports: [],
+    harnessRuns: [],
     events: [],
     createdAt: AT,
     updatedAt: AT,

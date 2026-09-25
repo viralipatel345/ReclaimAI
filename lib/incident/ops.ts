@@ -49,6 +49,7 @@ export async function createReport(user: User, input: { branch: ReportBranch; ti
     verifications: [],
     escalations: [],
     reports: [],
+    harnessRuns: [],
     events: [evt],
     createdAt: at,
     updatedAt: at,

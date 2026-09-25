@@ -10,6 +10,12 @@ export interface IncidentStore {
   save(c: CaseReport): Promise<void>;
   delete(id: string): Promise<void>;
   listByUser(userId: string): Promise<CaseReport[]>;
+  /** Cases under an active mandate whose next scheduled check is due. */
+  listDue(now: number): Promise<CaseReport[]>;
+}
+
+export function isDue(c: CaseReport, now: number): boolean {
+  return !!c.mandate?.enabled && c.status !== "SEALED" && !!c.nextCheckAt && new Date(c.nextCheckAt).getTime() <= now;
 }
 
 class MemoryIncidentStore implements IncidentStore {
@@ -25,6 +31,9 @@ class MemoryIncidentStore implements IncidentStore {
   }
   async listByUser(userId: string) {
     return [...this.cases.values()].filter((c) => c.userId === userId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+  async listDue(now: number) {
+    return [...this.cases.values()].filter((c) => isDue(c, now));
   }
 }
 

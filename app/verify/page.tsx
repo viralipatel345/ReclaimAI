@@ -7,12 +7,13 @@ import { Icon, type IconName } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, Eyebrow, Modal } from "@/components/ui";
 import { CHANNEL_ORDER, CHANNELS, REPORT_STATUS_LABEL } from "@/lib/incident/channels";
+import { CADENCE_OPTIONS, DEFAULT_MANDATE, HOW_IT_WORKS, MANDATE_ACTIONS, MANDATE_TEXT } from "@/lib/incident/mandate";
 import { incidentApi, type StatusRow } from "@/lib/incident/client";
-import type { AgentAction, AiLook, CaseReport, CaseStatus, ImageMatch, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, SearchScope, StatusEvent, VerificationResult } from "@/lib/incident/types";
+import type { AgentAction, AiLook, CaseReport, CaseStatus, HarnessDecision, ImageMatch, MandateAction, MatchRisk, ProvenanceVerdict, ReportAction, ReportArtifact, ReportChannel, ReportStatus, Reporter, RiskLevel, SearchScope, StatusEvent, VerificationResult } from "@/lib/incident/types";
 import { clockTime, shortDateTime } from "@/lib/time";
 
-const STEPS = ["Report", "Verify", "Act", "File", "Seal"] as const;
-const STEP_FOR: Record<CaseStatus, number> = { DRAFT: 1, SCANNING: 1, ANALYZED: 2, ESCALATED: 3, SEALED: 4, CLOSED: 4 };
+const STEPS = ["Report", "Verify", "Act", "File", "Watch", "Seal"] as const;
+const STEP_FOR: Record<CaseStatus, number> = { DRAFT: 1, SCANNING: 1, ANALYZED: 2, ESCALATED: 3, SEALED: 5, CLOSED: 5 };
 
 type Run = (label: string, fn: () => Promise<CaseReport>) => Promise<void>;
 
@@ -58,7 +59,7 @@ export default function VerifyPage() {
       return r.case;
     });
 
-  const step = c ? STEP_FOR[c.status] : 0;
+  const step = c ? (c.mandate?.enabled && c.status !== "SEALED" ? 4 : STEP_FOR[c.status]) : 0;
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-16 pt-8 md:px-12 md:pt-10">
@@ -93,6 +94,7 @@ export default function VerifyPage() {
           <EvidenceCard c={c} busy={busy} run={run} fileRef={fileRef} onFile={fileChannel} />
           <ActionsCard c={c} busy={busy} run={run} onAddEvidence={() => fileRef.current?.click()} onFile={fileChannel} />
           <FileCard c={c} busy={busy} onFile={fileChannel} onShow={setArtifact} />
+          <HarnessCard c={c} busy={busy} run={run} demo={demo} />
           <SealCard c={c} busy={busy} run={run} />
         </div>
         <StatusPanel rows={rows} events={events} live={live} demo={demo} activeId={c?.id} />
@@ -712,7 +714,135 @@ function ArtifactModal({ a, onClose }: { a: ReportArtifact; onClose: () => void 
   );
 }
 
-// ---------- 05 Seal + record ----------
+// ---------- 05 Agent harness ----------
+
+const DECISION_PILL: Record<HarnessDecision["kind"], string> = { auto: "bg-removed-soft text-removed", needs_you: "bg-overdue-soft text-overdue", skipped: "bg-ground text-muted border border-line" };
+const DECISION_LABEL: Record<HarnessDecision["kind"], string> = { auto: "done", needs_you: "needs you", skipped: "skipped" };
+const ACTION_LABEL: Record<HarnessDecision["action"], string> = { recheck: "Re-check", platform_notice: "Takedown notice", stopncii: "StopNCII", ftc_after_deadline: "FTC complaint", parasell: "Parasell" };
+
+function HarnessCard({ c, busy, run, demo }: { c: CaseReport | null; busy: string | null; run: Run; demo: boolean }) {
+  const [allowed, setAllowed] = useState<MandateAction[]>([...DEFAULT_MANDATE.allowedActions]);
+  const [cadence, setCadence] = useState<number>(DEFAULT_MANDATE.cadenceHours);
+  const [signature, setSignature] = useState("");
+  const [openRun, setOpenRun] = useState<string | null>(null);
+  const ready = !!c && c.status !== "SEALED" && !!c.imageSearch;
+  const m = c?.mandate;
+  const active = !!m?.enabled;
+  const toggle = (id: MandateAction) => setAllowed((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+
+  return (
+    <section className={`${card} p-5 md:p-6 ${!ready && !active ? "opacity-60" : ""} ${active ? "border-accent/40" : ""}`}>
+      <SectionHead n="05" title="Let the agent keep watch" hint={active ? `every ${m!.cadenceHours}h · next check ${shortDateTime(c!.nextCheckAt)}` : m ? `paused ${shortDateTime(m.revokedAt)}` : "Agent harness"} />
+      <ol className="mt-4 grid gap-3 sm:grid-cols-4">
+        {HOW_IT_WORKS.map((h, i) => (
+          <li key={h.step} className="border-t border-line pt-3">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <span className="font-mono text-[11px] text-accent">0{i + 1}</span> {h.step}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{h.text}</p>
+          </li>
+        ))}
+      </ol>
+
+      {!active ? (
+        <div className="mt-5 rounded-xl border border-line bg-ground/60 p-4">
+          <p className="text-sm font-medium">What the agent may do on its own</p>
+          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+            {MANDATE_ACTIONS.map((a) => (
+              <li key={a.id}>
+                <label className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 transition-colors ${allowed.includes(a.id) ? "border-accent bg-accent-soft/60" : "border-line"}`}>
+                  <input type="checkbox" checked={allowed.includes(a.id)} onChange={() => toggle(a.id)} disabled={!ready} className="mt-0.5 h-4 w-4 accent-[#3446A8]" />
+                  <span>
+                    <span className="block text-sm font-medium">{a.label}</span>
+                    <span className="block text-xs leading-relaxed text-muted">{a.description}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr]">
+            <label className="block text-xs font-medium text-muted">
+              How often
+              <select value={cadence} onChange={(e) => setCadence(Number(e.target.value))} disabled={!ready} className={`${input} mt-1 text-sm`}>
+                {CADENCE_OPTIONS.map((o) => (
+                  <option key={o.hours} value={o.hours}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-muted">
+              Type your name to authorize <span className="font-normal">(as you signed the report{c?.reporter ? `: ${c.reporter.signature}` : ""})</span>
+              <input value={signature} onChange={(e) => setSignature(e.target.value)} disabled={!ready} placeholder={c?.reporter?.signature ?? "Your name"} className={`${input} mt-1 font-display text-sm italic`} />
+            </label>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-muted">{MANDATE_TEXT}</p>
+          <button
+            disabled={!ready || !!busy || allowed.length === 0 || signature.trim().length < 2}
+            onClick={() => run("mandate", async () => (await incidentApi.mandate({ caseId: c!.id, enabled: true, signature, allowedActions: allowed, cadenceHours: cadence })).case)}
+            className={`${btnPrimary} mt-4`}
+          >
+            {busy === "mandate" ? <>{spin} Authorizing and running the first check…</> : <><Icon name="eye" size={16} /> Authorize the agent</>}
+          </button>
+        </div>
+      ) : (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Pill label={`watching · ${m!.allowedActions.length} action${m!.allowedActions.length === 1 ? "" : "s"} allowed`} cls="bg-accent-soft text-accent" icon="eye" />
+          <button disabled={!!busy} onClick={() => run("harness", async () => (await incidentApi.harness(c!.id)).case)} className={btnSecondary}>
+            {busy === "harness" ? spin : <Icon name="refresh" size={15} />} Run a check now
+          </button>
+          {demo && (
+            <button disabled={!!busy} onClick={() => run("harness", async () => (await incidentApi.harness(c!.id, Date.now() + 49 * 3_600_000)).case)} className={btnSecondary}>
+              <Icon name="clock" size={15} /> Fast-forward 49h
+            </button>
+          )}
+          <button disabled={!!busy} onClick={() => run("mandate", async () => (await incidentApi.mandate({ caseId: c!.id, enabled: false })).case)} className={`${btnGhost} ml-auto`}>
+            <Icon name="x" size={14} /> Pause the agent
+          </button>
+        </div>
+      )}
+
+      {c && c.harnessRuns.length > 0 && (
+        <ol className="mt-5 divide-y divide-line">
+          {c.harnessRuns.map((r, idx) => {
+            const n = c.harnessRuns.length - idx;
+            const auto = r.decisions.filter((d) => d.kind === "auto" && d.action !== "recheck").length;
+            const needs = r.decisions.filter((d) => d.kind === "needs_you").length;
+            const isOpen = openRun === r.id;
+            return (
+              <li key={r.id} className="py-3">
+                <button onClick={() => setOpenRun(isOpen ? null : r.id)} className="flex w-full flex-wrap items-center gap-2 text-left">
+                  <span className="font-mono text-xs text-accent">#{n}</span>
+                  <span className="text-sm font-medium">
+                    {r.newAiMatches} new AI image{r.newAiMatches === 1 ? "" : "s"} · {auto} action{auto === 1 ? "" : "s"} taken
+                  </span>
+                  {needs > 0 && <Pill label={`${needs} need${needs === 1 ? "s" : ""} you`} cls="bg-overdue-soft text-overdue" />}
+                  <span className="ml-auto font-mono text-[11px] text-muted">
+                    {r.trigger} · {stamp(r.finishedAt)}
+                  </span>
+                </button>
+                {isOpen && (
+                  <ul className="mt-2 space-y-1.5 border-l border-line pl-4">
+                    {r.decisions.map((d, i) => (
+                      <li key={i} className="flex flex-wrap items-start gap-2 text-sm">
+                        <Pill label={DECISION_LABEL[d.kind]} cls={DECISION_PILL[d.kind]} />
+                        <span className="font-medium">{ACTION_LABEL[d.action]}</span>
+                        <span className="text-muted">{d.reason}</span>
+                        {d.target && <span className="w-full truncate font-mono text-[11px] text-muted">{d.target}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+// ---------- 06 Seal + record ----------
 
 function SealCard({ c, busy, run }: { c: CaseReport | null; busy: string | null; run: Run }) {
   const ready = !!c && (c.verifications.length > 0 || !!c.scrape || c.reports.length > 0);
@@ -723,7 +853,7 @@ function SealCard({ c, busy, run }: { c: CaseReport | null; busy: string | null;
   const [copied, setCopied] = useState(false);
   return (
     <section className={`${card} p-5 md:p-6 ${!ready ? "opacity-60" : ""} ${sealed ? "border-removed/40" : ""}`}>
-      <SectionHead n="05" title="Record & seal" hint={log.length ? `${log.length} entries` : "Replace with original"} />
+      <SectionHead n="06" title="Record & seal" hint={log.length ? `${log.length} entries` : "Replace with original"} />
       {log.length > 0 && (
         <>
           <ol className="mt-4 max-h-72 overflow-y-auto border-l border-line pl-4">

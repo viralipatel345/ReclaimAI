@@ -172,7 +172,12 @@ export async function searchForFigure(buffer: Buffer, mimeType: string, assetId:
   if (opts.subjectName?.trim()) {
     subject = { name: opts.subjectName.trim(), confidence: 1, source: "user" };
   } else {
-    const who: PublicFigure = await (opts.deps?.identify ?? identifyPublicFigure)(buffer, mimeType);
+    let who: PublicFigure;
+    try {
+      who = await (opts.deps?.identify ?? identifyPublicFigure)(buffer, mimeType);
+    } catch (err) {
+      throw new NoPublicFigureError(`Couldn't analyse the image (${err instanceof Error ? err.message.slice(0, 80) : "error"}). Type the person's name to search.`);
+    }
     if (!who.name) throw new NoPublicFigureError("Couldn't identify a widely known public figure in this image. Type their name to search.");
     subject = { name: who.name, confidence: who.confidence, source: "gemini" };
   }

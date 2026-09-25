@@ -20,6 +20,9 @@ function memStore(): IncidentStore {
     async listByUser(u) {
       return [...map.values()].filter((c) => c.userId === u);
     },
+    async listDue() {
+      return [];
+    },
   };
 }
 
@@ -53,6 +56,7 @@ const base: CaseReport = {
   ],
   escalations: [],
   reports: [],
+  harnessRuns: [],
   events: [{ id: "evt_0", caseId: "case_1", status: "DRAFT", text: "Report created.", at: "2026-09-25T11:00:00.000Z" }],
   createdAt: "2026-09-25T11:00:00.000Z",
   updatedAt: "2026-09-25T11:30:00.000Z",
