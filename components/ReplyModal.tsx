@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { applyReply } from "@/lib/escalation";
 import type { ParsedReply } from "@/lib/followups";
+import { postJson } from "@/lib/api";
+import { classifyReplyByRules } from "@/lib/replyRules";
 import { updateCase } from "@/lib/useCase";
 import type { ReplyStatus, TakedownRequest } from "@/lib/types";
 import { Icon } from "./Icon";
@@ -19,16 +21,11 @@ export function ReplyModal({ r, onClose }: { r: TakedownRequest; onClose: () => 
 
   const classify = async () => {
     setBusy(true);
-    try {
-      const res = await fetch("/api/parse-reply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, platformName: r.platformName }) });
-      if (res.ok) {
-        const out = (await res.json()) as ParsedReply;
-        setResult(out);
-        setChoice(out.status === "unclear" ? null : out.status);
-      }
-    } finally {
-      setBusy(false);
-    }
+    // Server unreachable: the same keyword rules the server falls back to.
+    const out = (await postJson<ParsedReply>("/api/parse-reply", { text, platformName: r.platformName })) ?? { ...classifyReplyByRules(text), source: "rules" as const };
+    setResult(out);
+    setChoice(out.status === "unclear" ? null : out.status);
+    setBusy(false);
   };
 
   const save = () => {

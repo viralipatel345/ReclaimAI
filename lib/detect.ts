@@ -84,7 +84,7 @@ export interface Detection {
   signals: string[];
   /** One sentence from Gemini explaining the call (or the rule text when unavailable). */
   explanation: string;
-  source: "gemini" | "rules";
+  source: "gemini" | "cached" | "rules";
 }
 
 /** Add confirmed posts as links and draft one request per platform. Nothing is sent. */

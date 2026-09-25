@@ -15,6 +15,9 @@ import { shortDateTime } from "@/lib/time";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useNow } from "@/lib/useNow";
 import { useChase } from "@/lib/useChase";
+import { postJson } from "@/lib/api";
+import { cachedFollowUp } from "@/lib/demoCache";
+import { recordAi } from "@/lib/aiStatus";
 import { useDemoMode } from "@/components/Providers";
 import type { Case, TakedownRequest } from "@/lib/types";
 
@@ -47,6 +50,7 @@ function Ftc() {
 }
 
 function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) {
+  const demo = useDemoMode();
   const draft = ftcComplaintFor(c, r.id);
   const aiSummary = draft?.aiSource === "gemini" ? draft.aiText : undefined;
   const complaint = renderFtcComplaint(ftcInput(c, r, now, aiSummary));
@@ -57,17 +61,14 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
   useEffect(() => {
     if (!draft || draft.aiSource === "gemini" || requested.current) return;
     requested.current = true;
-    fetch("/api/followup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "ftc", facts: timelineFacts(c, r, now) }),
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((out: { text: string; source: string } | null) => {
-        updateCase((x) => setOutboxAiText(x, draft.id, out?.source === "gemini" && out.text ? out.text : draft.aiText));
-      })
-      .catch(() => updateCase((x) => setOutboxAiText(x, draft.id, draft.aiText)));
-  }, [c, r, draft, now]);
+    postJson<{ text: string; source: "gemini" | "cached" | "template" }>("/api/followup", { kind: "ftc", facts: timelineFacts(c, r, now) }, 14000).then((out) => {
+      // Server unreachable in demo: the recorded summary; otherwise keep the template text.
+      const cached = demo ? cachedFollowUp("ftc", r.platformName) : undefined;
+      const text = out?.text || cached || draft.aiText;
+      recordAi("FTC summary", out?.source === "gemini" ? "live" : out?.text || cached ? "cached" : "template");
+      updateCase((x) => setOutboxAiText(x, draft.id, text));
+    });
+  }, [c, r, draft, now, demo]);
 
   const all = complaint.sections.map((s) => `${s.title}\n${s.text}`).join("\n\n");
   const filed = !!r.escalatedAt;

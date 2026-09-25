@@ -10,8 +10,11 @@ import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnPrimary, btnSecondary, card, Eyebrow, Loading } from "@/components/ui";
 import { withOpening } from "@/lib/caseOps";
-import { addDetectedLinks, detectContext, type Detection, type MatchLevel } from "@/lib/detect";
-import type { OpeningsResult } from "@/lib/draft";
+import { addDetectedLinks, detectContext, ruleLevel, ruleSignals, type Detection, type MatchLevel } from "@/lib/detect";
+import { postJson } from "@/lib/api";
+import { cachedDetection } from "@/lib/demoCache";
+import { recordAi } from "@/lib/aiStatus";
+import { fetchOpenings } from "@/lib/openingsClient";
 import { updateCase, useCase } from "@/lib/useCase";
 import type { Case } from "@/lib/types";
 
@@ -35,14 +38,21 @@ export default function DetectPage() {
   return <Detector c={c} />;
 }
 
+/** Live Gemini via /api/detect; if the server is unreachable, the recorded verdict, then the rules. */
 async function detectOne(post: SandboxPost, c: Case): Promise<Detection> {
-  const res = await fetch("/api/detect", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ post: { id: post.id, url: post.url, caption: post.caption, comments: post.comments }, context: detectContext(c) }),
-  });
-  if (!res.ok) throw new Error(String(res.status));
-  return (await res.json()) as Detection;
+  const ctx = detectContext(c);
+  const live = await postJson<Detection>("/api/detect", { post: { id: post.id, url: post.url, caption: post.caption, comments: post.comments }, context: ctx });
+  const d: Detection =
+    live ??
+    (cachedDetection(post.id) ? { ...cachedDetection(post.id)!, source: "cached" } : null) ?? {
+      postId: post.id,
+      url: post.url,
+      level: ruleLevel(ruleSignals(post, ctx)),
+      signals: ruleSignals(post, ctx).map((s) => s.text),
+      explanation: ruleSignals(post, ctx)[0]?.text ?? "Nothing in the text connects this post to you.",
+      source: "rules",
+    };
+  return d;
 }
 
 function Detector({ c }: { c: Case }) {
@@ -74,6 +84,10 @@ function Detector({ c }: { c: Case }) {
     t0.current = Date.now();
     // Every post is classified in parallel; the scan reveals them in order.
     const pending = posts.map((p) => detectOne(p, c).catch(() => null));
+    Promise.all(pending).then((all) => {
+      const src = all.filter(Boolean).map((d) => d!.source);
+      recordAi("Live detection", src.every((x) => x === "gemini") ? "live" : src.some((x) => x === "cached") ? "cached" : "template");
+    });
     const found: Detection[] = [];
     say(`Opening @${SANDBOX_ACCOUNT.handle} on Instagram (sandbox) — same handle as the X account in your case.`);
     await sleep(700);
@@ -127,16 +141,11 @@ function Detector({ c }: { c: Case }) {
       return next;
     });
     // Gemini writes the greeting, same as every other request.
-    try {
-      const res = await fetch("/api/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: drafted }) });
-      if (res.ok) {
-        const { openings } = (await res.json()) as OpeningsResult;
-        updateCase((x) => ({
-          ...x,
-          requests: x.requests.map((r) => (drafted.some((d) => d.id === r.id) && openings[r.platformId] ? { ...withOpening(x, r, openings[r.platformId]), openingSource: "gemini" as const } : r)),
-        }));
-      }
-    } catch {}
+    const { openings } = await fetchOpenings(drafted, true);
+    updateCase((x) => ({
+      ...x,
+      requests: x.requests.map((r) => (drafted.some((d) => d.id === r.id) && openings[r.platformId] ? { ...withOpening(x, r, openings[r.platformId]), openingSource: "gemini" as const } : r)),
+    }));
     router.push("/case/requests");
   };
 
