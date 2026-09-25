@@ -55,7 +55,7 @@ export function simulatePlatformResponses(c: Case, now: number): Case {
   });
   const sentActs = requests
     .filter((r) => r.sentAt)
-    .map((r) => activity(`Request sent to ${r.platformName}. 48-hour clock started.`, "accent", r.sentAt!));
+    .map((r) => activity(`Request sent to ${r.platformName} (demo). 48-hour clock started.`, "accent", r.sentAt!));
   const all = [...newActs, ...sentActs].sort((a, b) => b.at.localeCompare(a.at));
   const demoPageState = { ...c.demoPageState, [DEMO_URLS.reddit]: "removed" as const };
   const simulated = { ...c, requests, activity: all, evidence: [...c.evidence, ...sentEvidence, ...replyEvidence], outbox: [...(c.outbox ?? []), ...reminders], demoPageState };
@@ -110,9 +110,17 @@ export function fastForward(c: Case, now: number): Case {
       return removeAt(r, at, `ImgVault removed the file — ${hoursMinutes(at - sent)} after your request.`);
     }
     if (r.platformId === "google-search") return removeAt(r, now - DAY_MS, "Google removed the explicit results for your name.");
+    if (r.platformId === "instagram") {
+      const at = sent + 14 * HOUR_MS + 6 * 60000;
+      return removeAt(r, at, `Instagram removed ${r.linkIds.length === 1 ? "the post" : `all ${r.linkIds.length} posts`} — ${hoursMinutes(at - sent)} after your request.`);
+    }
     return r;
   });
 
+  // Anything Instagram removed must also read as removed on re-check.
+  const instagramUrls = requests
+    .filter((r) => r.platformId === "instagram" && r.status === "removed")
+    .flatMap((r) => linksFor(shifted, r).map((l) => l.url));
   return {
     ...shifted,
     requests,
@@ -120,10 +128,12 @@ export function fastForward(c: Case, now: number): Case {
     activity: [...newActs, ...shifted.activity].sort((a, b) => b.at.localeCompare(a.at)),
     demoPageState: {
       ...shifted.demoPageState,
+      ...Object.fromEntries(instagramUrls.map((u) => [u, "removed" as const])),
       [DEMO_URLS.reddit]: "removed",
       [DEMO_URLS.imgvault]: "removed",
       [DEMO_URLS.x]: "live", // re-uploaded after X removed it
     },
     demoNameResults: [{ url: DEMO_URLS.nameResult, title: "ImgVault — k9Pw2Qz" }],
+    demoBanner: { label: "3 days later", at: isoAt(now) },
   };
 }

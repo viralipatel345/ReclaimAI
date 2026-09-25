@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { applyReply } from "@/lib/escalation";
 import type { ParsedReply } from "@/lib/followups";
+import { postJson } from "@/lib/api";
+import { classifyReplyByRules } from "@/lib/replyRules";
 import { updateCase } from "@/lib/useCase";
 import type { ReplyStatus, TakedownRequest } from "@/lib/types";
 import { Icon } from "./Icon";
@@ -19,16 +21,11 @@ export function ReplyModal({ r, onClose }: { r: TakedownRequest; onClose: () => 
 
   const classify = async () => {
     setBusy(true);
-    try {
-      const res = await fetch("/api/parse-reply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, platformName: r.platformName }) });
-      if (res.ok) {
-        const out = (await res.json()) as ParsedReply;
-        setResult(out);
-        setChoice(out.status === "unclear" ? null : out.status);
-      }
-    } finally {
-      setBusy(false);
-    }
+    // Server unreachable: the same keyword rules the server falls back to.
+    const out = (await postJson<ParsedReply>("/api/parse-reply", { text, platformName: r.platformName })) ?? { ...classifyReplyByRules(text), source: "rules" as const };
+    setResult(out);
+    setChoice(out.status === "unclear" ? null : out.status);
+    setBusy(false);
   };
 
   const save = () => {
@@ -57,7 +54,7 @@ export function ReplyModal({ r, onClose }: { r: TakedownRequest; onClose: () => 
       {!result ? (
         <>
           <label htmlFor="reply" className="text-sm font-medium">Paste the platform’s email</label>
-          <textarea id="reply" value={text} onChange={(e) => setText(e.target.value)} rows={8} className="mt-2 w-full rounded-xl border border-line p-3 text-[14px] leading-relaxed focus:border-accent focus:outline-none" placeholder="Thanks for your report…" />
+          <textarea id="reply" value={text} onChange={(e) => setText(e.target.value)} rows={8} className="mt-2 w-full rounded-xl border border-line p-3 text-sm leading-relaxed focus:border-accent focus:outline-none" placeholder="Thanks for your report…" />
           <p className="mt-2 text-xs text-muted">Gemini reads it to tell whether they removed it. The text isn’t stored — only the outcome.</p>
         </>
       ) : (
@@ -73,7 +70,7 @@ export function ReplyModal({ r, onClose }: { r: TakedownRequest; onClose: () => 
               <span className="text-sm font-medium">What they said</span>
               <StatusPill status={PILL[result.status]} />
             </div>
-            <p className="mt-2 text-[15px] leading-relaxed">{result.summary}</p>
+            <p className="mt-2 text-body leading-relaxed">{result.summary}</p>
           </div>
           <fieldset>
             <legend className="text-sm font-medium">{result.status === "unclear" ? "We couldn’t tell. What did they decide?" : "Is that right?"}</legend>

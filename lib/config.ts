@@ -37,3 +37,19 @@ export const DAY_MS = 24 * HOUR_MS;
 export function isDemoMode(): boolean {
   return process.env.DEMO_MODE === "true";
 }
+
+/**
+ * Real-mode integrations. Read at request time on the server and handed to the browser.
+ * GOOGLE_CLIENT_ID: OAuth web client for Google sign-in (Gmail send + read), public by design.
+ * TEST_PLATFORM_INBOX: when set, every request email goes here instead of the platform,
+ * clearly labeled as a stand-in — for rehearsals and judging without filing real notices.
+ */
+export function publicAppConfig() {
+  return {
+    googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+    testPlatformInbox: process.env.TEST_PLATFORM_INBOX ?? "",
+    /** No test inbox needed: each request is addressed to the user's own email, labeled as a stand-in. */
+    sendToSelf: process.env.SEND_TO_SELF === "true",
+  };
+}
+export type PublicAppConfig = ReturnType<typeof publicAppConfig>;

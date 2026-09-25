@@ -85,17 +85,20 @@ describe("re-checks store only a title and a status", () => {
 });
 
 describe("no image handling anywhere in the code", () => {
-  // Deliberate exception: incident verification (/verify) accepts media so SynthID + C2PA
-  // can check it. Bytes are scanned in memory and dropped — only a hash and verdict are
-  // kept (see tests/provenance.test.ts). The takedown flow itself stays links-only.
-  const PROVENANCE_PATHS = [join("app", "verify"), join("app", "api", "incident", "scan"), join("lib", "provenance")];
+  // Deliberate exceptions:
+  // - incident verification (/verify) accepts media so SynthID + C2PA can check it. Bytes are
+  //   scanned in memory and dropped — only a hash and verdict are kept (tests/provenance.test.ts).
+  // - identity verification uploads a government ID (never imagery) to Document AI.
+  // The takedown flow itself stays links-only.
+  const EXEMPT_DIRS = [join("app", "verify"), join("app", "api", "incident", "scan"), join("app", "api", "verify-identity"), join("lib", "provenance")];
+  const EXEMPT_FILES = [join("components", "IdentityVerifier.tsx")];
   const files: string[] = [];
   const walk = (dir: string) => {
-    if (PROVENANCE_PATHS.some((p) => dir === p)) return;
+    if (EXEMPT_DIRS.some((p) => dir === p)) return;
     for (const f of readdirSync(dir)) {
       const p = join(dir, f);
       if (statSync(p).isDirectory()) walk(p);
-      else if (/\.(ts|tsx)$/.test(f)) files.push(p);
+      else if (/\.(ts|tsx)$/.test(f) && !EXEMPT_FILES.includes(p)) files.push(p);
     }
   };
   ["lib", "app", "components"].forEach(walk);
@@ -108,6 +111,7 @@ describe("no image handling anywhere in the code", () => {
     ["file inputs", /type=["']file["']/],
     ["FileReader", /new FileReader/],
     ["image downloads", /\.blob\(\)|arrayBuffer\(\)\s*;?\s*\/\/\s*image/],
+    ["Gmail attachment downloads", /\/attachments\//],
   ])("does not use %s", (_label, pattern) => {
     const offenders = files.filter((f) => pattern.test(readFileSync(f, "utf8")));
     expect(offenders).toEqual([]);

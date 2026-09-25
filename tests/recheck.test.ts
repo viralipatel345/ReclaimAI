@@ -136,3 +136,53 @@ describe("demo: Fast-forward 3 days", () => {
     expect(c.evidence.filter((e) => e.event === "recheck")).toHaveLength(3);
   });
 });
+
+describe("demo mode with a live link", () => {
+  it("uses fixtures for the fictional seed URLs but re-checks any other link for real", async () => {
+    const { addLinkWithRequest } = await import("@/lib/recheckOps");
+    const sim = simulatePlatformResponses(createDemoCase(NOW), NOW);
+    const live = "https://reclaim-demo-test.tumblr.com/post/123";
+    // As resolved live by Gemini + Google Search in the demo
+    const tumblr = { id: "search:tumblr.com", name: "Tumblr", channel: "form" as const, target: "https://www.tumblr.com/abuse", confidence: 0.9, source: "search" as const, coveredByAct: true };
+    const withLive = addLinkWithRequest(sim, live, new Date(NOW).toISOString(), true, tumblr).next;
+    const fetched: string[] = [];
+    const fetchText = async (url: string) => {
+      fetched.push(url);
+      return { httpStatus: 404, title: "", text: "" };
+    };
+    const { case: c } = await runRecheck(withLive, NOW + 60000, { demo: true, fetchText });
+    expect(fetched).toEqual([live]); // seed URLs never hit the network
+    expect(latestRequestFor(c, c.links.find((l) => l.url === live)!.id)!.status).toBe("removed");
+    expect(c.activity[0].text).toMatch(/confirmed .* removed/);
+  });
+});
+
+describe("fast-forward after live detection", () => {
+  it("keeps the story: Instagram removed, no network, no 'unclear', X re-upload is the only open thread", async () => {
+    const { SANDBOX_ACCOUNT } = await import("@/data/sandbox");
+    const { addDetectedLinks } = await import("@/lib/detect");
+    const { markSent } = await import("@/lib/caseOps");
+    const { displayStatus } = await import("@/lib/caseOps");
+    const likely = SANDBOX_ACCOUNT.posts.slice(0, 5).filter((p) => ["Cq7Lx2aPq1", "Cq5Rz1cHy7", "Cq3Jb9eQs5"].includes(p.id));
+    let c = createDemoCase(NOW);
+    const at = new Date(NOW).toISOString();
+    const added = addDetectedLinks(c, likely.map((p) => ({ url: p.url, caption: p.caption })), at);
+    c = markSent(added.next, added.next.requests.filter((r) => r.status === "ready").map((r) => r.id), at, true);
+    c = simulatePlatformResponses(c, NOW);
+    const later = NOW + 5 * 60000;
+    const fetched: string[] = [];
+    const { case: out } = await runRecheck(fastForward(c, later), later, {
+      demo: true,
+      fetchText: async (u) => {
+        fetched.push(u);
+        return { httpStatus: 200, title: "", text: "" };
+      },
+    });
+    expect(fetched).toEqual([]);
+    expect(out.links.some((l) => l.needsUserCheck)).toBe(false);
+    const ig = out.requests.find((r) => r.platformId === "instagram")!;
+    expect(ig.status).toBe("removed");
+    const open = out.requests.filter((r) => !["removed"].includes(displayStatus(r, later)));
+    expect(open.map((r) => `${r.platformId}:${r.kind}`)).toEqual(["x:refile"]);
+  });
+});

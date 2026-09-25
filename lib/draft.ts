@@ -13,7 +13,7 @@ export interface OpeningTarget {
 
 export interface OpeningsResult {
   openings: Record<string, string>;
-  source: "gemini" | "template";
+  source: "gemini" | "cached" | "template";
   model?: string;
 }
 

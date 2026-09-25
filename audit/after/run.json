@@ -1,0 +1,146 @@
+{
+  "base": "http://localhost:3200",
+  "at": "2026-09-25T20:57:31.384Z",
+  "summary": [
+    {
+      "viewport": "desktop",
+      "actionCount": 7,
+      "actions": [
+        "click Start demo",
+        "click Live detection",
+        "click Add likely matches",
+        "click Send all",
+        "press 1 (simulate)",
+        "click Review & file complaint",
+        "press 2 (fast-forward)",
+        "(phone) share a link"
+      ],
+      "longestWait": {
+        "step": "detection scan",
+        "ms": 7827
+      },
+      "waits": [
+        {
+          "step": "landing → case",
+          "ms": 16
+        },
+        {
+          "step": "draft → requests page",
+          "ms": 1293
+        },
+        {
+          "step": "greetings written",
+          "ms": 5815
+        },
+        {
+          "step": "open detection",
+          "ms": 18
+        },
+        {
+          "step": "detection scan",
+          "ms": 7827
+        },
+        {
+          "step": "add detected → requests",
+          "ms": 32
+        },
+        {
+          "step": "instagram greeting written",
+          "ms": 2799
+        },
+        {
+          "step": "send → tracker",
+          "ms": 48
+        },
+        {
+          "step": "open FTC page",
+          "ms": 26
+        },
+        {
+          "step": "FTC summary (Gemini)",
+          "ms": 2293
+        },
+        {
+          "step": "fast-forward re-check",
+          "ms": 5
+        }
+      ],
+      "consoleErrors": [],
+      "screenshots": 17
+    },
+    {
+      "viewport": "mobile",
+      "actionCount": 7,
+      "actions": [
+        "click Start demo",
+        "click Live detection",
+        "click Add likely matches",
+        "click Send all",
+        "press 1 (simulate)",
+        "click Review & file complaint",
+        "press 2 (fast-forward)",
+        "(phone) share a link"
+      ],
+      "longestWait": {
+        "step": "detection scan",
+        "ms": 7827
+      },
+      "waits": [
+        {
+          "step": "landing → case",
+          "ms": 28
+        },
+        {
+          "step": "draft → requests page",
+          "ms": 1289
+        },
+        {
+          "step": "greetings written",
+          "ms": 5311
+        },
+        {
+          "step": "open detection",
+          "ms": 28
+        },
+        {
+          "step": "detection scan",
+          "ms": 7827
+        },
+        {
+          "step": "add detected → requests",
+          "ms": 28
+        },
+        {
+          "step": "instagram greeting written",
+          "ms": 3301
+        },
+        {
+          "step": "send → tracker",
+          "ms": 44
+        },
+        {
+          "step": "open FTC page",
+          "ms": 26
+        },
+        {
+          "step": "FTC summary (Gemini)",
+          "ms": 2795
+        },
+        {
+          "step": "fast-forward re-check",
+          "ms": 3
+        }
+      ],
+      "consoleErrors": [],
+      "screenshots": 17
+    }
+  ],
+  "probes": {
+    "storedKeysAfterUnder18": 0,
+    "offlineDraftMs": 124,
+    "offlinePageErrors": [],
+    "slowDraftStaticMs": 2124,
+    "requestsAfterDoubleClickDraft": 4,
+    "sentActivitiesAfterDoubleClickSend": 4
+  }
+}

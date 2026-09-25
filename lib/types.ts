@@ -72,7 +72,8 @@ export interface TakedownRequest {
   subject: string;
   /** Short courteous opening — the only model-written part. */
   opening: string;
-  openingSource?: "gemini" | "template" | "user";
+  /** "pending" while Gemini is still writing it (the template greeting is in the body meanwhile). */
+  openingSource?: "pending" | "gemini" | "template" | "user";
   /** Full rendered text: opening + fixed legal template. */
   body: string;
   status: RequestStatus;
@@ -90,11 +91,34 @@ export interface TakedownRequest {
   simulated?: boolean;
   /** When the user filed an FTC complaint about this request. */
   escalatedAt?: string;
+  /** Set when the request was sent from the user's Gmail. */
+  gmail?: GmailLink;
   /** Latest platform reply, as classified by parse_reply. */
   reply?: { status: ReplyStatus; summary: string; at: string };
 }
 
 export type ReplyStatus = "acknowledged" | "removed" | "rejected" | "unclear";
+
+export interface GmailLink {
+  threadId: string;
+  messageId: string;
+  /** Message-ID header, so reminders thread under the original. */
+  messageIdHeader: string;
+  to: string;
+  /** True when sent to the team test inbox standing in for the platform. */
+  standIn: boolean;
+  /** Gmail message ids of replies already read. */
+  seen: string[];
+}
+
+/** A reply Gemini couldn't classify (or one that asks for images) — she decides. */
+export interface PendingReply {
+  requestId: string;
+  gmailMessageId: string;
+  summary: string;
+  asksForImages: boolean;
+  at: string;
+}
 
 export type OutboundKind = "reminder" | "ftc_complaint";
 
@@ -110,10 +134,15 @@ export interface OutboundMessage {
   subject: string;
   /** Short model-written paragraph (reminder line or complaint summary); fixed facts live in `body`. */
   aiText: string;
+  /** "pending" never persists; "template" after a fallback — only "gemini" is labeled as Gemini's. */
   aiSource: "gemini" | "template";
+  /** Set once the FTC page has asked Gemini, so a fallback isn't retried on every render. */
+  aiTried?: boolean;
   body: string;
   sentAt?: string;
   simulated?: boolean;
+  /** Gmail message id when the reminder was sent from her Gmail. */
+  gmailId?: string;
 }
 
 export type EvidenceEvent = "logged" | "sent" | "recheck" | "reply" | "refiled";
@@ -143,12 +172,6 @@ export interface ActivityItem {
   tone: ActivityTone;
 }
 
-export interface ChatMessage {
-  role: "agent" | "user";
-  text: string;
-  at: string;
-}
-
 export interface Attestation {
   text: string;
   signature: string;
@@ -170,7 +193,6 @@ export interface Case {
   requests: TakedownRequest[];
   evidence: EvidenceEntry[];
   activity: ActivityItem[];
-  chat: ChatMessage[];
   /** Reminders and FTC complaint drafts. Optional for cases saved before step 5. */
   outbox?: OutboundMessage[];
   lastRecheckAt?: string;
@@ -178,8 +200,11 @@ export interface Case {
   /** Start of the current streak of re-checks with every link removed. 30 days → weekly. */
   cleanSince?: string;
   pendingResults?: NameResult[];
+  pendingReplies?: PendingReply[];
   dismissedResults?: string[];
   /** Demo mode only: which fixture version each URL serves, and name-search fixture results. */
   demoPageState?: Record<string, PageStatus>;
   demoNameResults?: { url: string; title: string }[];
+  /** Demo only: set by "Fast-forward 3 days" so the tracker can summarise what the agent did. */
+  demoBanner?: { label: string; at: string };
 }

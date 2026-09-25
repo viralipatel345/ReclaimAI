@@ -12,3 +12,8 @@ tests
 Dockerfile
 .dockerignore
 README.md
+
+# Separate projects, not part of the app image
+landing-aistudio
+brand
+audit

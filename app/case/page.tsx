@@ -1,17 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { IntakeChat } from "@/components/IntakeChat";
+import { GmailConnect } from "@/components/GmailConnect";
 import { PrivacyCard } from "@/components/StepRail";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
+import { IdentityVerifier } from "@/components/IdentityVerifier";
 import { addLink, draftRequests, removeLink } from "@/lib/caseOps";
 import { nameSearchUrl, normalizeUrl } from "@/lib/platforms";
 import { ATTESTATION_TEXT } from "@/lib/templates";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useResolveLinks } from "@/lib/useResolve";
-import type { OpeningsResult, OpeningTarget } from "@/lib/draft";
+import { useDemoMode } from "@/components/Providers";
 import type { Case } from "@/lib/types";
 
 export default function TellUsWhere() {
@@ -32,13 +33,16 @@ function CaseForm({ c }: { c: Case }) {
   const [linkInput, setLinkInput] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
+  const demo = useDemoMode();
+  const [idVerified, setIdVerified] = useState(false);
   const checking = useResolveLinks(c);
   const [attested, setAttested] = useState(!!c.attestation.signedAt);
   const signature = c.attestation.signature;
   const setSignature = (v: string) => updateCase((x) => ({ ...x, attestation: { ...x.attestation, signature: v } }));
 
   const hasNameSearch = c.links.some((l) => l.kind === "name_search");
-  const canDraft = attested && signature.trim().length >= 2 && c.links.length > 0 && checking.size === 0 && !drafting;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.contactEmail);
+  const canDraft = attested && signature.trim().length >= 2 && c.legalName.trim().length >= 2 && emailOk && c.links.length > 0 && checking.size === 0 && !drafting && idVerified;
 
   const onAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,38 +56,68 @@ function CaseForm({ c }: { c: Case }) {
     setLinkInput("");
   };
 
-  const onDraft = async () => {
-    const at = new Date().toISOString();
-    const signed: Case = { ...c, attestation: { text: ATTESTATION_TEXT, signature: signature.trim(), signedAt: at } };
-    const targets: OpeningTarget[] = draftRequests(signed, at).map((r) => ({
-      platformId: r.platformId,
-      platformName: r.platformName,
-      kind: r.kind,
-    }));
+  // Drafting is instant: requests are rendered from the fixed template now, and the
+  // Requests page streams Gemini's greetings into them as they arrive.
+  const onDraft = () => {
+    if (drafting) return;
     setDrafting(true);
-    let openings: Record<string, string> = {};
-    try {
-      const res = await fetch("/api/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets }) });
-      if (res.ok) openings = ((await res.json()) as OpeningsResult).openings;
-    } catch {
-      // Template openings are used if Gemini is unreachable.
-    }
+    const at = new Date().toISOString();
     updateCase((x) => {
-      const next = { ...x, attestation: signed.attestation };
-      const requests = draftRequests(next, at, openings).map((r) => ({ ...r, openingSource: openings[r.platformId] ? ("gemini" as const) : ("template" as const) }));
-      return { ...next, requests };
+      const next = { ...x, attestation: { text: ATTESTATION_TEXT, signature: signature.trim(), signedAt: at } };
+      return { ...next, requests: draftRequests(next, at).map((r) => ({ ...r, openingSource: "pending" as const })) };
     });
     router.push("/case/requests");
   };
 
+  // Demo: arriving from "Start demo" drafts automatically after a short, visible beat.
+  const [autoDraft, setAutoDraft] = useState(false);
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!demo || autoStarted.current || new URLSearchParams(window.location.search).get("auto") !== "1") return;
+    autoStarted.current = true;
+    window.history.replaceState(null, "", "/case");
+    const show = setTimeout(() => setAutoDraft(true), 0);
+    return () => clearTimeout(show);
+  }, [demo]);
+
   return (
     <div>
       <Eyebrow>Step 01</Eyebrow>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">Tell us where</h1>
-      <p className="mt-2 max-w-[60ch] text-muted">Share the links. You never need to describe what they show.</p>
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">Tell us where</h1>
+      <p className="mt-2 max-w-[60ch] text-muted">Your details and the links. That’s all — you never need to describe what they show.</p>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <IntakeChat c={c} />
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        <section className={`${card} p-5`} aria-labelledby="details-title">
+          <h2 id="details-title" className="font-display text-xl font-semibold">Your details</h2>
+          <p className="mt-1 text-sm text-muted">Requests go out under this name. Platforms reply to this email — a new address just for this is fine.</p>
+          <label htmlFor="legal-name" className="mt-5 block text-sm font-medium">Full name</label>
+          <input
+            id="legal-name"
+            value={c.legalName}
+            onChange={(e) => updateCase((x) => ({ ...x, legalName: e.target.value }))}
+            autoComplete="name"
+            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-base focus:border-accent focus:outline-none md:text-body"
+          />
+          <label htmlFor="contact-email" className="mt-4 block text-sm font-medium">Email for replies</label>
+          <input
+            id="contact-email"
+            type="email"
+            value={c.contactEmail}
+            onChange={(e) => updateCase((x) => ({ ...x, contactEmail: e.target.value.trim() }))}
+            autoComplete="email"
+            inputMode="email"
+            className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-base focus:border-accent focus:outline-none md:text-body"
+          />
+          {c.contactEmail && !emailOk && <p className="mt-2 text-sm text-overdue">That email doesn’t look complete.</p>}
+          <div className="mt-4">
+            <GmailConnect onConnected={(email) => updateCase((x) => ({ ...x, contactEmail: email }))} />
+          </div>
+          <IdentityVerifier claimedName={c.legalName} onVerified={setIdVerified} />
+          <p className="mt-5 flex items-start gap-2 rounded-xl bg-ground p-3 text-xs leading-relaxed text-muted">
+            <Icon name="lock" size={14} className="mt-0.5" />
+            You’ll never be asked what the images show. Reclaim only needs the links.
+          </p>
+        </section>
 
         {/* Links */}
         <section className={`${card} p-5`} aria-labelledby="links-title">
@@ -100,7 +134,7 @@ function CaseForm({ c }: { c: Case }) {
               placeholder="Paste a link"
               inputMode="url"
               autoComplete="off"
-              className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-[16px] md:text-[13px] placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-base md:text-caption placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
             />
             <button className={`${btnSecondary} h-11`}>
               <Icon name="plus" size={16} /> Add
@@ -113,7 +147,7 @@ function CaseForm({ c }: { c: Case }) {
               <li key={l.id} className="flex items-start gap-3 py-3">
                 <Icon name={l.kind === "name_search" ? "search" : "link"} size={16} className="mt-1 text-muted" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-mono text-[13px]" title={l.url}>
+                  <p className="truncate font-mono text-caption" title={l.url}>
                     {l.kind === "name_search" ? `Google results for “${c.legalName}”` : l.url.replace(/^https?:\/\/(www\.)?/, "")}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -149,8 +183,8 @@ function CaseForm({ c }: { c: Case }) {
         <div>
           <h2 id="sign-title" className="font-display text-xl font-semibold">Sign your requests</h2>
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-ground p-4">
-            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-[#3446A8]" />
-            <span className="text-[15px] leading-relaxed">{ATTESTATION_TEXT}</span>
+            <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-accent" />
+            <span className="text-body leading-relaxed">{ATTESTATION_TEXT}</span>
           </label>
           <label htmlFor="sig" className="mt-5 block text-sm font-medium">Type your full name to sign</label>
           <input
@@ -178,11 +212,30 @@ function CaseForm({ c }: { c: Case }) {
           />
           <div className="mt-auto pt-5">
             <button onClick={onDraft} disabled={!canDraft} className={`${btnPrimary} w-full`}>
-              {drafting ? "Drafting with Gemini…" : "Draft my requests"} <Icon name={drafting ? "sparkle" : "arrow"} size={18} className={drafting ? "animate-pulse" : ""} />
+              Draft my requests <Icon name="arrow" size={18} />
             </button>
+            {autoDraft && canDraft && (
+              // Demo: always on screen, wherever the form is scrolled. Click to go now.
+              <button
+                onClick={onDraft}
+                className="anim-rise fixed inset-x-4 bottom-6 z-40 mx-auto flex max-w-md flex-col gap-2 overflow-hidden rounded-2xl bg-panel px-5 py-4 text-left text-white shadow-2xl"
+              >
+                <span className="flex items-center justify-between gap-3">
+                  <span className="font-display text-lg font-semibold">Drafting {c.links.length} requests…</span>
+                  <span className="text-xs text-panel-muted">Click to go now</span>
+                </span>
+                <span className="h-1 w-full overflow-hidden rounded-full bg-white/15">
+                  <span
+                    className="anim-fill block h-full bg-panel-accent"
+                    style={{ ["--fill-ms" as string]: "2200ms" }}
+                    onAnimationEnd={onDraft}
+                  />
+                </span>
+              </button>
+            )}
             {!canDraft && !drafting && (
               <p className="mt-2 text-center text-xs text-muted">
-                {checking.size > 0 ? "Still finding removal channels…" : "Add at least one link, tick the statement and sign."}
+                {checking.size > 0 ? "Still finding removal channels…" : !idVerified ? "Verify your identity in the details section before drafting." : "Add your name, email and at least one link, then tick the statement and sign."}
               </p>
             )}
           </div>
@@ -198,7 +251,7 @@ function Toggle({ checked, onChange, title, text }: { checked: boolean; onChange
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4 border-b border-line py-4 first:pt-0">
       <span>
-        <span className="block text-[15px] font-medium">{title}</span>
+        <span className="block text-body font-medium">{title}</span>
         <span className="mt-0.5 block text-sm leading-relaxed text-muted">{text}</span>
       </span>
       <span className="relative mt-0.5 inline-flex shrink-0">

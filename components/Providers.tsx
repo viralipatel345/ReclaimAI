@@ -3,11 +3,14 @@ import { createContext, useContext, useEffect } from "react";
 import { configureClient } from "@/lib/useCase";
 import { quickExit } from "@/lib/quickExit";
 import { DemoPanel } from "./DemoPanel";
+import type { PublicAppConfig } from "@/lib/config";
 
 const DemoContext = createContext(false);
 export const useDemoMode = () => useContext(DemoContext);
+const ConfigContext = createContext<PublicAppConfig>({ googleClientId: "", testPlatformInbox: "", sendToSelf: false });
+export const useAppConfig = () => useContext(ConfigContext);
 
-export function Providers({ demoMode, children }: { demoMode: boolean; children: React.ReactNode }) {
+export function Providers({ demoMode, config, children }: { demoMode: boolean; config: PublicAppConfig; children: React.ReactNode }) {
   configureClient({ demoMode });
 
   // Quick exit: Esc from anywhere, including inside inputs.
@@ -26,8 +29,10 @@ export function Providers({ demoMode, children }: { demoMode: boolean; children:
 
   return (
     <DemoContext.Provider value={demoMode}>
-      {children}
-      {demoMode && <DemoPanel />}
+      <ConfigContext.Provider value={config}>
+        {children}
+        {demoMode && <DemoPanel />}
+      </ConfigContext.Provider>
     </DemoContext.Provider>
   );
 }

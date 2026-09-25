@@ -3,6 +3,7 @@
 // hostname only). Each link is attempted once per page session.
 import { useEffect, useSyncExternalStore } from "react";
 import { updateCase } from "./useCase";
+import { postJson } from "./api";
 import type { Case, ResolvedPlatform } from "./types";
 
 const attempted = new Set<string>();
@@ -22,12 +23,7 @@ function subscribe(l: () => void) {
 const EMPTY: ReadonlySet<string> = new Set();
 
 export async function fetchResolution(url: string): Promise<ResolvedPlatform | null> {
-  try {
-    const res = await fetch("/api/resolve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
-    return res.ok ? ((await res.json()) as ResolvedPlatform) : null;
-  } catch {
-    return null;
-  }
+  return postJson<ResolvedPlatform>("/api/resolve", { url }, 22000);
 }
 
 /** Returns the ids of links currently being checked. */

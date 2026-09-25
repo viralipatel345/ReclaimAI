@@ -25,13 +25,15 @@ Requires Node 20.9+ (built and tested on Node 24).
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | yes (for live AI) | Gemini API key from [AI Studio](https://aistudio.google.com/apikey). Server-side only; never logged or sent to the browser. Without it, every AI step falls back to fixed templates / a scripted intake. |
+| `GEMINI_API_KEY` | yes (for live AI) | Gemini API key from [AI Studio](https://aistudio.google.com/apikey). Server-side only; never logged or sent to the browser. Without it, every AI step falls back to fixed templates and rules. |
 | `DEMO_MODE` | no | `true` seeds the fictional case, uses page fixtures for re-checks (no network calls to the demo URLs), and never actually sends anything. |
 | `GEMINI_MODEL` | no | Primary model. Default `gemini-3.1-pro-preview`. |
 | `GEMINI_FALLBACK_MODEL` | no | Used automatically on 429 / 503 / 404. Default `gemini-flash-latest`. |
 | `GEMINI_FAST_MODEL`, `GEMINI_GROUNDING_MODEL` | no | Latency-sensitive calls and the Google Search–grounded call. Default `gemini-flash-latest`. |
 | `RECHECK_CRON_SECRET` | for scheduled re-checks | Shared secret Cloud Scheduler sends as `x-reclaim-cron`. Without it, the scheduler endpoint returns 401. |
-| `GOOGLE_CSE_API_KEY`, `GOOGLE_CSE_ID` | no | Programmable Search for the user's **own-name** check. Stubbed (no results) when unset. |
+| `GOOGLE_CLIENT_ID` | for Gmail | OAuth 2.0 **Web** client ID. Enables “Send from my Gmail”: requests go out from her Gmail (Gmail API, `gmail.send`), and platform replies are read (`gmail.readonly`) and classified by Gemini. The token stays in the browser tab. |
+| `TEST_PLATFORM_INBOX` | no | When set, every request email goes to this team inbox, labeled `[Reclaim test → Platform]`, instead of the real platform. Use for rehearsals and judging. |
+| `GOOGLE_CSE_API_KEY`, `GOOGLE_CSE_ID` | no | Programmable Search for the own-name check. When unset, Reclaim uses **Gemini with Google Search grounding**. |
 
 All model names live in `lib/config.ts`.
 
@@ -42,23 +44,48 @@ All model names live in `lib/config.ts`.
 The demo runs in `DEMO_MODE=true`. Press **Shift+D** on any screen to open the presenter panel. Press **Esc** or click **Quick exit** on any screen to leave instantly.
 
 1. **`/`**: one line about the 48-hour right, then the age check. Choosing *Under 18* routes to NCMEC's Take It Down and stores nothing.
-2. **`/case` Tell us where**: live Gemini intake (it never asks what the images show). Paste a link and it resolves to a platform pill plus a channel. An unknown site is looked up with Google Search. Tick the statement, type a signature, then **Draft my requests** (Gemini writes each greeting).
-3. **`/case/requests`**: four request cards, the evidence log, and a PDF. Click **Send all 4 requests**.
-4. **`/case/tracker`**: live 48-hour countdowns. Shift+D → **Simulate platform responses**:
+2. **`/case` Tell us where**: name, email and links. Nothing asks what the images show. Paste a link and it resolves to a platform pill plus a channel. An unknown site is looked up with Google Search. Tick the statement, type a signature, then **Draft my requests** (Gemini writes each greeting).
+3. **`/case/requests`**: four request cards, the evidence log, and a PDF.
+4. **Live detection** (the button on the requests page): an agent scans a **sandbox, fictional Instagram account**, the same handle as the X uploader.
+   - It reads captions, comments and the bio as **text only**. Image tiles show "Not opened".
+   - Gemini flags each post (3 likely, 2 possible, 4 unrelated), with a reason for each.
+   - She confirms matches; confirmed posts become one Instagram request (nothing is sent), and a StopNCII.org pointer is shown.
+   - Rules decide the match level, and Gemini can never mark a post "likely" without text evidence, so the result is the same every run.
+   - Then **Send all**.
+5. **`/case/tracker`**: live 48-hour countdowns. Shift+D → **Simulate platform responses**:
    - Reddit removed in 19h 42m
    - Google acknowledged
    - X overdue, with the count-up and **Escalation ready**
-5. **Review & file complaint**: the FTC complaint, with Gemini's summary drafted from the evidence log and every fact taken from the record.
-6. Shift+D → **Fast-forward 3 days**:
+6. **Review & file complaint**: the FTC complaint, with Gemini's summary drafted from the evidence log and every fact taken from the record.
+7. Shift+D → **Fast-forward 3 days**:
    - the recheck agent runs;
    - Reddit is **still removed ✓**;
    - X's post is **back up**, so it's re-filed automatically, citing the original request, with a new 48h card;
    - a new Google result for her name waits in **Needs you** for her confirmation.
-7. **Phone**: install the PWA, then Share → Reclaim from any app. You get *Request sent · 47:59:59*.
+8. **Phone**: install the PWA, then Share → Reclaim from any app. You get *Request sent · 47:59:59*.
 
 Recovery / rehearsal URLs (demo mode only): `/demo?preset=fresh`, `sent`, `simulated`, `escalation`, `fastforward`.
 
 ---
+
+## Real mode (no simulations)
+
+With `DEMO_MODE` unset, nothing is simulated:
+
+- **Sending** — “Send from my Gmail” signs in with Google; requests go out from her Gmail via the Gmail API. With `TEST_PLATFORM_INBOX` set they go to that team inbox, clearly labeled as a stand-in for each platform. Web-form platforms without a test inbox open the form with copy-paste fields.
+- **Replies** — every minute while the tracker is open, Reclaim reads new replies in each request’s Gmail thread (text only; attachments are never downloaded) and **Gemini** classifies them. Unclear replies, or replies asking for images, wait in *Needs you*.
+- **Reminders** — 24h/44h reminders are sent as replies in the same Gmail thread (only with her auto-send consent).
+- **Live detection** — reads the reported account’s **public RSS/Atom feed** (Tumblr blogs and most blogs have one; Instagram and X don’t) as text, and **Gemini 3.1 Pro** judges each post.
+- **Re-checks** — fetch each real link as text; **Gemini 3.1 Pro** decides removed / live / unclear.
+- **Own-name search** — **Gemini with Google Search grounding**; results are resolved to real URLs and wait for her confirmation.
+- **Deadlines** are real 48-hour clocks. To show an overdue platform, send a real request 2+ days before; *Back up case* on the tracker protects it (Quick exit wipes the browser copy by design).
+
+### Google OAuth setup (for Gmail)
+
+1. In a Google Cloud project: enable the **Gmail API**.
+2. **OAuth consent screen** → External → add the Gmail addresses that will sign in as **test users**.
+3. **Credentials → Create OAuth client ID → Web application**, authorized JavaScript origins: your Cloud Run URL and `http://localhost:3000`.
+4. Set `GOOGLE_CLIENT_ID` (runtime env var; no rebuild needed on Cloud Run).
 
 ## Hard safety rules and where they're enforced
 
@@ -66,7 +93,7 @@ Recovery / rehearsal URLs (demo mode only): `/demo?preset=fresh`, `sent`, `simul
 |---|---|
 | **Links only.** No image upload, download or vision model. | No file inputs anywhere; the share target accepts `url`/`text`/`title` only. Re-checks use `lib/pageText.ts`, which sends `Accept: text/html`, refuses any non-text response **without reading its body**, and strips every media tag, attribute and `data:` URI. Only a page title and a status are stored. Gemini's `urlContext` is deliberately not used, because it would let the model fetch pages with images. Tests: `tests/noImages.test.ts`, which is mutation-checked. |
 | **No searching for a person's images.** | Only two searches exist: (1) `resolve_platform`, which sends Google Search the **hostname only**, never the path; (2) the user's **own name**, where every result waits for her confirmation. |
-| **Under-18 → stop.** | The age gate, plus a deterministic check that runs *before* any model call, plus the model's own `isAdult` flag. Any of them routes to NCMEC with `intake: null`, clears storage and deletes the server copy. Test: `tests/intake.test.ts`. |
+| **Under-18 → stop.** | The age gate routes to NCMEC's Take It Down, clears local and session storage, deletes any server copy, and never creates a case; `PUT /api/case` also refuses `isAdult: false`. Test: `tests/ageGate.test.ts`. |
 | **Never create accounts, log in, post, or contact the uploader.** | No such code exists. Form channels only open the platform's form, with copy-paste fields. |
 | **Signed attestation; explicit consent.** | Every request contains the fixed good-faith statement and `/s/` signature. Auto-send requires the one-time consent toggle; the model can never set consent. **Review each before sending** is always available. |
 | **Quick exit everywhere.** | Button + Esc → `window.location.replace("https://weather.com")`. Clears localStorage and sessionStorage and deletes the server copy via `sendBeacon`. |
@@ -82,11 +109,11 @@ Other privacy defaults: `Referrer-Policy: no-referrer`, the app can't be framed 
 
 | Tool | What Gemini does | What it never sees or controls |
 |---|---|---|
-| `collect_intake` | Warm, one-question-at-a-time intake → structured JSON | Can't grant auto-send consent; replies asking about image content are replaced |
 | `resolve_platform` | Separate call **grounded with Google Search**; must return sources, ≥ 0.7 confidence, and a channel on the site's own domain | Never sees the URL path. Otherwise: "Couldn't confirm — use the site's contact page" |
 | `draft_request` / `draft_google_removal` | Short first-person greeting (parallel tool calls) | Gets platform names only. Legal sections come from fixed templates (`lib/templates.ts`) |
 | `draft_reminder` / `draft_ftc_complaint` | One reminder line / the complaint summary | Gets timeline facts only (platform, dates, counts), never name, email or links |
 | `parse_reply` | Classifies a pasted platform email; flags requests for images | The text isn't stored; the user confirms the outcome |
+| `flag_post` | Live detection (sandbox): judges one post's caption and comments as likely / possible / unrelated, with a reason | Never sees images; can't make a post "likely" without rule evidence; she confirms every match |
 | `recheck` | Judges ambiguous page **text** (media stripped) | Only after HTTP status and removal-wording rules; unsure → `unclear` → ask the user |
 | `log_evidence`, `prepare_submission`, `start_clock` | Deterministic tools (no model) | SHA-256 of `url + page title`; mailto / Gmail-ready draft / form fields; `deadline = sent + 48h` |
 
@@ -100,10 +127,10 @@ app/                     Next.js App Router (TypeScript, Tailwind)
   case/                  Tell us where · Review requests · Tracker · FTC complaint
   share/                 PWA share target + paste fallback
   help/under-18/         NCMEC hand-off
-  api/                   intake, resolve, draft, followup, parse-reply, recheck, case, send (stub)
+  api/                   resolve, draft, detect, followup, parse-reply, recheck, case, send (stub)
 lib/
   agent.ts gemini.ts     Agent loop, tool declarations, retry/fallback
-  intake.ts resolve.ts draft.ts followups.ts recheck.ts   Gemini-backed flows (server)
+  resolve.ts draft.ts detectAgent.ts followups.ts recheck.ts   Gemini-backed flows (server)
   caseOps.ts escalation.ts recheckOps.ts demo.ts          Pure case transitions (client + server)
   templates.ts           Fixed legal text (request, Google removal, reminder, FTC complaint)
   pageText.ts            Text-only, SSRF-safe page fetch
@@ -138,6 +165,18 @@ gcloud run deploy reclaim --source . --region $REGION --allow-unauthenticated \
 ```
 
 The Cloud Run service account needs `roles/secretmanager.secretAccessor` on both secrets.
+
+**If `--source` fails with `PERMISSION_DENIED … default service account`** (common on hackathon/lab projects where you can't edit project IAM), build locally and deploy the image instead. This is how the demo is currently deployed:
+
+```bash
+IMG=us-central1-docker.pkg.dev/$PROJECT/cloud-run-source-deploy/reclaim:$(git rev-parse --short HEAD)
+gcloud auth configure-docker us-central1-docker.pkg.dev
+docker buildx build --platform linux/amd64 -t "$IMG" --push .   # Cloud Run is x86; build for amd64 on Apple silicon
+gcloud run deploy reclaim --image "$IMG" --region $REGION --allow-unauthenticated \
+  --set-env-vars DEMO_MODE=true \
+  --set-secrets GEMINI_API_KEY=gemini-api-key:latest,RECHECK_CRON_SECRET=recheck-cron-secret:latest \
+  --min-instances 1 --max-instances 1
+```
 
 `--max-instances 1` is required while the server store is in memory, so every request and the scheduler hit the same instance. `--min-instances 1` avoids a cold start mid-demo. Switch the store to Firestore before scaling out.
 

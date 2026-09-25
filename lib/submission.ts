@@ -2,6 +2,7 @@
 // with consent) can send. Reclaim never logs in to platforms or submits forms itself.
 import { linksFor } from "./caseOps";
 import type { Case, TakedownRequest } from "./types";
+import { requestEmail, type Recipient } from "./gmailOps";
 
 export interface CopyField {
   label: string;
@@ -9,16 +10,24 @@ export interface CopyField {
 }
 
 export type Submission =
-  | { channel: "email"; to: string; subject: string; body: string; mailto: string; gmailDraft: { to: string; subject: string; body: string } }
+  | {
+      channel: "email";
+      to: string;
+      subject: string;
+      body: string;
+      mailto: string;
+      /** Opens Gmail's compose window pre-filled — a real send, no sign-in setup. */
+      compose: string;
+      gmailDraft: { to: string; subject: string; body: string };
+      /** Set when addressed to a stand-in inbox rather than the platform. */
+      standInFor?: string;
+    }
   | { channel: "form"; formUrl: string; fields: CopyField[] }
   | { channel: null; message: string };
 
 export function prepareSubmission(c: Case, r: { channel: TakedownRequest["channel"]; target: string | null; subject: string; body: string; linkIds: string[] }): Submission {
   if (!r.channel || !r.target) return { channel: null, message: "Couldn't confirm — use the site's contact page" };
-  if (r.channel === "email") {
-    const mailto = `mailto:${encodeURIComponent(r.target)}?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}`;
-    return { channel: "email", to: r.target, subject: r.subject, body: r.body, mailto, gmailDraft: { to: r.target, subject: r.subject, body: r.body } };
-  }
+  if (r.channel === "email") return emailSubmission(r.target, r.subject, r.body);
   const urls = linksFor(c, r as TakedownRequest).map((l) => l.url);
   return {
     channel: "form",
@@ -31,4 +40,19 @@ export function prepareSubmission(c: Case, r: { channel: TakedownRequest["channe
       { label: "Full request (paste into the description box)", value: r.body },
     ],
   };
+}
+
+export function gmailComposeUrl(to: string, subject: string, body: string): string {
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+export function emailSubmission(to: string, subject: string, body: string, standInFor?: string): Submission {
+  const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return { channel: "email", to, subject, body, mailto, compose: gmailComposeUrl(to, subject, body), gmailDraft: { to, subject, body }, standInFor };
+}
+
+/** The same request, addressed to a stand-in inbox and labeled so. */
+export function standInSubmission(r: TakedownRequest, rcpt: Recipient, from: string): Submission {
+  const e = requestEmail(r, from, rcpt);
+  return emailSubmission(e.to, e.subject, e.body, r.platformName);
 }

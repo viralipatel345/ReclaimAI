@@ -1,6 +1,6 @@
 // resolve_platform: directory first; otherwise a separate Gemini call grounded with
-// Google Search. Only the HOSTNAME is ever sent — never the path, which could identify
-// the content or the person. Low confidence or ungrounded answers are never used.
+// Google Search. Only the base domain (e.g. "tumblr.com") is ever sent — never the path or
+// subdomain, which could identify the content, an account, or the person. Low confidence or ungrounded answers are never used.
 import { ThinkingLevel, type GenerateContentResponse } from "@google/genai";
 import { MIN_PLATFORM_CONFIDENCE, MODELS } from "./config";
 import { generate, type GenerateParams } from "./gemini";
@@ -13,7 +13,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Neutral wording on purpose: the model reliably runs Google Search for an "abuse report /
 // content removal" question, but tends to skip search (answering from memory) when the
-// topic is described as intimate imagery. Only the hostname is included.
+// topic is described as intimate imagery. Only the base domain is included.
 export function groundingPrompt(host: string): string {
   return `Search the web: what is the official abuse report or content removal request page (or abuse email address) published by the website ${host}? Base your answer only on search results, not memory.
 Then give ONLY a JSON object on the last line:
@@ -46,6 +46,13 @@ export function siteLabel(host: string): string {
   const parts = host.replace(/^www\./, "").split(".");
   if (parts.length >= 3 && SECOND_LEVEL.has(parts[parts.length - 2])) return parts[parts.length - 3];
   return parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+}
+
+/** "staff.tumblr.com" -> "tumblr.com". Subdomains can name an account, so only the base domain is searched. */
+export function baseDomain(host: string): string {
+  const parts = host.replace(/^www\./, "").split(".");
+  const keep = parts.length >= 3 && SECOND_LEVEL.has(parts[parts.length - 2]) ? 3 : 2;
+  return parts.slice(-keep).join(".");
 }
 
 /** A channel is only trusted on the site's own domain or on a domain Google Search returned. */
@@ -88,25 +95,31 @@ const cache = new Map<string, ResolvedPlatform>();
 export async function resolvePlatform(url: string, gen: Generator = generate): Promise<ResolvedPlatform> {
   const direct = matchDirectory(url);
   if (direct) return direct;
-  const host = hostOf(url);
-  if (!host) return unresolvedPlatform(url);
+  const fullHost = hostOf(url);
+  if (!fullHost) return unresolvedPlatform(url);
+  const host = baseDomain(fullHost);
   const cached = cache.get(host);
   if (cached) return cached;
 
   try {
-    const { response } = await gen({
-      model: MODELS.grounding,
-      contents: groundingPrompt(host),
-      config: { tools: [{ googleSearch: {} }], thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
-    });
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-    const sources = chunks
-      .map((c) => ({ title: c.web?.title ?? c.web?.domain ?? "", uri: c.web?.uri ?? "" }))
-      .filter((s) => s.uri)
-      .slice(0, 3);
-    const result = validateAnswer(host, parseJson(response.text ?? ""), sources);
-    cache.set(host, result);
-    return result;
+    // The model sometimes answers from memory without searching. An ungrounded answer is
+    // never trusted, so ask once more before giving up.
+    let result: ResolvedPlatform | null = null;
+    for (let attempt = 0; attempt < 2 && (!result || !result.sources?.length); attempt++) {
+      const { response } = await gen({
+        model: MODELS.grounding,
+        contents: groundingPrompt(host),
+        config: { tools: [{ googleSearch: {} }], thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } },
+      });
+      const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+      const sources = chunks
+        .map((c) => ({ title: c.web?.title ?? c.web?.domain ?? "", uri: c.web?.uri ?? "" }))
+        .filter((x) => x.uri)
+        .slice(0, 3);
+      result = validateAnswer(host, parseJson(response.text ?? ""), sources);
+    }
+    cache.set(host, result!);
+    return result!;
   } catch {
     // Don't cache failures: a later attempt may succeed.
     return unresolvedPlatform(url);

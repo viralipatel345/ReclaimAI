@@ -6,10 +6,12 @@
 //
 // Gemini's urlContext tool is deliberately NOT used: it would let Google fetch the page for
 // the model, and we couldn't guarantee images are stripped first. We fetch text ourselves.
-import { PAGE_FIXTURES } from "@/data/fixtures";
+import { demoFixture } from "@/data/demoPages";
 import { runAgent } from "./agent";
 import { MODELS } from "./config";
 import { chase } from "./escalation";
+import { withTimeout } from "./demoCache";
+import { searchOwnNameGrounded } from "./nameSearch";
 import { fetchPageText, NotTextError, type PageText } from "./pageText";
 import { addNameResults, applyPageStatus, latestRequestFor, scheduleNext } from "./recheckOps";
 import type { Case, PageStatus } from "./types";
@@ -28,7 +30,7 @@ export type PageClassifier = (page: PageText) => Promise<{ status?: string; reas
 
 const defaultClassifier: PageClassifier = async (page) => {
   const run = await runAgent<{ status?: string; reason?: string }>({
-    model: MODELS.fast,
+    model: MODELS.primary, // Gemini 3.1 Pro: judgment call
     systemInstruction:
       "You check whether content reported for removal is still up. You get a page's title and visible TEXT only (all images and media were stripped before you saw it). removed = the page says the content is gone/unavailable/removed or the account is suspended. live = the page clearly still shows the original post or file. unclear = login walls, age gates, errors, captchas, or anything else. Never guess: prefer unclear.",
     contents: [{ role: "user", parts: [{ text: `Title: ${page.title}\nHTTP status: ${page.httpStatus}\nText: ${page.text.slice(0, 3000)}` }] }],
@@ -60,11 +62,12 @@ export interface RecheckDeps {
 }
 
 async function checkLink(c: Case, url: string, deps: RecheckDeps): Promise<PageCheck> {
-  if (deps.demo) {
-    // Demo: fixtures only — no network calls to the (fictional) seed URLs.
-    const fixture = PAGE_FIXTURES[url];
+  const fixture = deps.demo ? demoFixture(url) : undefined;
+  if (fixture) {
+    // Demo: fictional URLs (seed links, sandbox posts) are served from fixtures — never fetched.
+    // Any other link (e.g. a team-owned test post for a live demo) is re-checked for real below.
     const state = c.demoPageState?.[url] ?? "live";
-    if (!fixture || state === "unclear") return { status: "unclear", title: fixture?.live.title ?? "", reason: "No fixture.", source: "fixture" };
+    if (state === "unclear") return { status: "unclear", title: fixture.live.title, reason: "Fixture marked unclear.", source: "fixture" };
     const page = fixture[state];
     return { status: state, title: page.title, reason: page.text, source: "fixture" };
   }
@@ -114,7 +117,9 @@ export async function runRecheck(c: Case, now: number, deps: RecheckDeps): Promi
     if (applied.changed) changes++;
   }
 
-  const results = deps.demo ? (next.demoNameResults ?? []) : await (deps.searchName ?? searchOwnName)(next.legalName).catch(() => []);
+  // Own-name check: Programmable Search if configured, else Gemini with Google Search grounding.
+  const nameSearch = deps.searchName ?? (process.env.GOOGLE_CSE_API_KEY ? searchOwnName : (n: string) => searchOwnNameGrounded(n));
+  const results = deps.demo ? (next.demoNameResults ?? []) : await withTimeout(nameSearch(next.legalName), 30000).catch(() => []);
   const named = addNameResults(next, results, at);
   next = named.next;
   changes += named.added;
