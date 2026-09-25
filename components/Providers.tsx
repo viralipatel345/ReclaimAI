@@ -19,6 +19,8 @@ export function Providers({ demoMode, children }: { demoMode: boolean; children:
       }
     };
     window.addEventListener("keydown", onKey, { capture: true });
+    // Service worker makes the app installable (needed for Share → Reclaim). It caches nothing.
+    navigator.serviceWorker?.register("/sw.js").catch(() => {});
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, []);
 

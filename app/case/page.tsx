@@ -100,7 +100,7 @@ function CaseForm({ c }: { c: Case }) {
               placeholder="Paste a link"
               inputMode="url"
               autoComplete="off"
-              className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-[13px] placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-[16px] md:text-[13px] placeholder:font-sans placeholder:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
             />
             <button className={`${btnSecondary} h-11`}>
               <Icon name="plus" size={16} /> Add

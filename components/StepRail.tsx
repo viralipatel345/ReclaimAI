@@ -4,9 +4,9 @@ import { usePathname } from "next/navigation";
 import { Icon } from "./Icon";
 
 const STEPS = [
-  { n: "01", label: "Tell us where", href: "/case" },
-  { n: "02", label: "Review requests", href: "/case/requests" },
-  { n: "03", label: "Track the 48 hours", href: "/case/tracker" },
+  { n: "01", label: "Tell us where", short: "Where", href: "/case" },
+  { n: "02", label: "Review requests", short: "Requests", href: "/case/requests" },
+  { n: "03", label: "Track the 48 hours", short: "Track", href: "/case/tracker" },
 ];
 
 export function StepRail() {
@@ -51,7 +51,8 @@ export function StepRail() {
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${i === active ? "border-accent bg-accent-soft font-medium text-accent" : "border-line bg-surface text-muted"}`}
               >
                 <span className="font-mono text-[11px]">{s.n}</span>
-                {s.label}
+                <span className="sm:hidden">{s.short}</span>
+                <span className="hidden sm:inline">{s.label}</span>
               </Link>
             </li>
           ))}

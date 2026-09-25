@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   description: "Enforce your 48-hour right to have non-consensual intimate images taken down.",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
+  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon-192.png", sizes: "192x192" }], apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Reclaim", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

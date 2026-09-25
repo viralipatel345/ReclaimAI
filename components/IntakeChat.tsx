@@ -118,7 +118,7 @@ export function IntakeChat({ c }: { c: Case }) {
           placeholder="Type a reply or paste a link…"
           autoComplete="off"
           maxLength={2000}
-          className="h-11 flex-1 rounded-xl border border-line bg-surface px-4 text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+          className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 text-[16px] md:text-sm placeholder:text-muted focus:border-accent focus:outline-none"
         />
         <button disabled={busy || !draft.trim()} className="grid h-11 w-11 place-items-center rounded-xl bg-accent text-white hover:bg-accent-hover disabled:opacity-40" aria-label="Send">
           <Icon name="send" size={16} />
