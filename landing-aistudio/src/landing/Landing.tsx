@@ -475,7 +475,6 @@ function Stats() {
           </motion.div>
         ))}
       </div>
-      <p className="mx-auto mt-10 max-w-[1240px] px-5 text-xs text-white/45 md:px-8">Sources: UN Women (2026), Sensity AI, Revenge Porn Helpline (UK), U.S. TAKE IT DOWN Act and FTC enforcement guidance.</p>
     </section>
   );
 }
