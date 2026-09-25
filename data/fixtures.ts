@@ -14,6 +14,8 @@ export const DEMO_URLS = {
   google: 'https://www.google.com/search?q=%22Jordan%20Ellis%22',
   /** Appears after "Fast-forward 3 days": the same content re-uploaded on X. */
   xReupload: "https://x.com/example_account2/status/1841007265530118000",
+  /** Appears after "Fast-forward 3 days" as a new Google result for her name (needs confirmation). */
+  nameResult: "https://imgvault.example/v/k9Pw2Qz",
 } as const;
 
 export const PAGE_FIXTURES: Record<string, { live: PageFixture; removed: PageFixture }> = {
@@ -32,6 +34,10 @@ export const PAGE_FIXTURES: Record<string, { live: PageFixture; removed: PageFix
   [DEMO_URLS.google]: {
     live: { title: "\"Jordan Ellis\" - Google Search", text: "About 3 results" },
     removed: { title: "\"Jordan Ellis\" - Google Search", text: "Some results may have been removed" },
+  },
+  [DEMO_URLS.nameResult]: {
+    live: { title: "ImgVault — k9Pw2Qz", text: "Uploaded anonymously · 41 views" },
+    removed: { title: "ImgVault — Not found", text: "This file has been removed." },
   },
   [DEMO_URLS.xReupload]: {
     live: { title: "example_account2 on X", text: "Post · 88 views" },

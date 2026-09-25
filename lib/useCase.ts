@@ -28,9 +28,31 @@ export function getCase(): Case | null {
   return read();
 }
 
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Debounced copy to the server store so the scheduled recheck agent can see the case. */
+function syncToServer(c: Case) {
+  if (typeof window === "undefined" || c.isAdult === false) return;
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    fetch("/api/case", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c), keepalive: true }).catch(() => {});
+  }, 1500);
+}
+
+/** Remove the server copy (Quick exit, under-18). Uses sendBeacon so it survives navigation. */
+export function deleteServerCopy(id: string) {
+  if (typeof navigator === "undefined") return;
+  if (syncTimer) clearTimeout(syncTimer);
+  const payload = JSON.stringify({ id, delete: true });
+  if (!navigator.sendBeacon?.("/api/case", new Blob([payload], { type: "application/json" }))) {
+    fetch("/api/case", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+  }
+}
+
 export function setCase(next: Case | null) {
   current = next;
   localMirror.save(next);
+  if (next) syncToServer(next);
   listeners.forEach((l) => l());
 }
 
@@ -50,6 +72,8 @@ export function startBlankCase() {
 
 /** Under-18 route: drop everything, in memory and on disk. */
 export function discardCase() {
+  const id = current?.id ?? localMirror.load()?.id;
+  if (id) deleteServerCopy(id);
   current = null;
   localMirror.clear();
   listeners.forEach((l) => l());

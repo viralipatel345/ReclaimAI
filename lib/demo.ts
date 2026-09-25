@@ -1,6 +1,7 @@
 // Demo-mode scenario helpers. Fictional data only.
 import { activity, evidenceFor, linksFor } from "./caseOps";
-import { DEADLINE_HOURS, HOUR_MS } from "./config";
+import { DEMO_URLS } from "@/data/fixtures";
+import { DAY_MS, DEADLINE_HOURS, HOUR_MS } from "./config";
 import { chase, reminderMessage } from "./escalation";
 import type { ActivityItem, Case, OutboundMessage, TakedownRequest } from "./types";
 import { addHours, hoursMinutes, isoAt } from "./time";
@@ -56,8 +57,73 @@ export function simulatePlatformResponses(c: Case, now: number): Case {
     .filter((r) => r.sentAt)
     .map((r) => activity(`Request sent to ${r.platformName}. 48-hour clock started.`, "accent", r.sentAt!));
   const all = [...newActs, ...sentActs].sort((a, b) => b.at.localeCompare(a.at));
-  const simulated = { ...c, requests, activity: all, evidence: [...c.evidence, ...sentEvidence, ...replyEvidence], outbox: [...(c.outbox ?? []), ...reminders] };
+  const demoPageState = { ...c.demoPageState, [DEMO_URLS.reddit]: "removed" as const };
+  const simulated = { ...c, requests, activity: all, evidence: [...c.evidence, ...sentEvidence, ...replyEvidence], outbox: [...(c.outbox ?? []), ...reminders], demoPageState };
   // The FTC draft for the overdue request comes from the same chase() the tracker runs.
   return chase(simulated, now, true);
 }
 
+
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+/** Move every timestamp in the case by deltaMs (negative = into the past). */
+export function shiftCase(c: Case, deltaMs: number): Case {
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string") return ISO.test(v) ? new Date(new Date(v).getTime() + deltaMs).toISOString() : v;
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    return v;
+  };
+  return walk(c) as Case;
+}
+
+export const FAST_FORWARD_MS = 3 * DAY_MS;
+
+/**
+ * Demo "Fast-forward 3 days": everything recorded so far moves 3 days into the past, and
+ * the platforms act during that window. The recheck agent (POST /api/recheck) then runs
+ * at "now" against fixture pages and finds:
+ *   Reddit still removed ✓ · X removed the post, but it's back up → re-upload, auto re-filed
+ *   ImgVault removed ✓ · Google removed the results · one new Google result for her name.
+ */
+export function fastForward(c: Case, now: number): Case {
+  const base = c.requests.some((r) => r.sentAt) ? c : simulatePlatformResponses(c, now);
+  const shifted = shiftCase(base, -FAST_FORWARD_MS);
+  const newActs: ActivityItem[] = [];
+  const replyEvidence: ReturnType<typeof evidenceFor>[] = [];
+  const removeAt = (r: TakedownRequest, at: number, text: string): TakedownRequest => {
+    const iso = isoAt(Math.min(at, now - HOUR_MS));
+    newActs.push(activity(text, "removed", iso));
+    replyEvidence.push(...linksFor(shifted, r).map((l) => evidenceFor(l, "reply", iso, { sentAt: r.sentAt, note: "Platform reported the content removed." })));
+    return { ...r, status: "removed", removedAt: iso };
+  };
+
+  const requests = shifted.requests.map((r) => {
+    if (!r.sentAt || r.status === "removed" || r.status === "rejected" || r.kind === "refile") return r;
+    const sent = new Date(r.sentAt).getTime();
+    if (r.platformId === "x") {
+      const at = new Date(r.deadlineAt!).getTime() + 26 * HOUR_MS;
+      return removeAt(r, at, `X removed the post — ${hoursMinutes(at - new Date(r.deadlineAt!).getTime())} after its deadline.`);
+    }
+    if (r.platformId === "imgvault") {
+      const at = sent + 31 * HOUR_MS + 12 * 60000;
+      return removeAt(r, at, `ImgVault removed the file — ${hoursMinutes(at - sent)} after your request.`);
+    }
+    if (r.platformId === "google-search") return removeAt(r, now - DAY_MS, "Google removed the explicit results for your name.");
+    return r;
+  });
+
+  return {
+    ...shifted,
+    requests,
+    evidence: [...shifted.evidence, ...replyEvidence],
+    activity: [...newActs, ...shifted.activity].sort((a, b) => b.at.localeCompare(a.at)),
+    demoPageState: {
+      ...shifted.demoPageState,
+      [DEMO_URLS.reddit]: "removed",
+      [DEMO_URLS.imgvault]: "removed",
+      [DEMO_URLS.x]: "live", // re-uploaded after X removed it
+    },
+    demoNameResults: [{ url: DEMO_URLS.nameResult, title: "ImgVault — k9Pw2Qz" }],
+  };
+}

@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { simulatePlatformResponses } from "@/lib/demo";
-import { resetDemo, startBlankCase, updateCase } from "@/lib/useCase";
+import { getCase, resetDemo, startBlankCase, updateCase } from "@/lib/useCase";
+import { fastForward } from "@/lib/demo";
+import { recheckNow } from "@/lib/recheckClient";
 import { Icon } from "./Icon";
 
 function isTyping(el: EventTarget | null) {
@@ -13,6 +15,7 @@ function isTyping(el: EventTarget | null) {
 /** Hidden presenter controls. Shift+D toggles. */
 export function DemoPanel() {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -43,8 +46,20 @@ export function DemoPanel() {
       >
         <Icon name="sparkle" size={16} /> Simulate platform responses
       </button>
-      <button className={btn} disabled title="Wired up in step 6">
-        <Icon name="refresh" size={16} /> Fast-forward 3 days
+      <button
+        className={btn}
+        disabled={busy}
+        onClick={async () => {
+          const c = getCase();
+          if (!c) return;
+          setBusy(true);
+          const now = Date.now();
+          await recheckNow(fastForward(c, now), now);
+          setBusy(false);
+          router.push("/case/tracker");
+        }}
+      >
+        <Icon name="refresh" size={16} className={busy ? "animate-spin" : ""} /> {busy ? "Re-checking…" : "Fast-forward 3 days"}
       </button>
       <button
         className={btn}
@@ -65,7 +80,7 @@ export function DemoPanel() {
         <Icon name="trash" size={16} /> Reset demo
       </button>
       <p className="px-2 pt-2 text-[11px] leading-relaxed text-panel-muted">
-        Shift+D to hide · Recovery URLs: <span className="font-mono">/demo?preset=fresh|sent|simulated|escalation</span>
+        Shift+D to hide · Recovery URLs: <span className="font-mono">/demo?preset=fresh|sent|simulated|escalation|fastforward</span>
       </p>
     </div>
   );

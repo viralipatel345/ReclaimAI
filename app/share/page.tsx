@@ -6,10 +6,10 @@ import { Countdown } from "@/components/Countdown";
 import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
-import { addLink, draftRequests, markSent } from "@/lib/caseOps";
+import { addLinkWithRequest } from "@/lib/recheckOps";
 import { extractUrl, matchDirectory, normalizeUrl } from "@/lib/platforms";
 import { getCase, setCase, useCase } from "@/lib/useCase";
-import type { Case, ResolvedPlatform, TakedownRequest } from "@/lib/types";
+import type { ResolvedPlatform } from "@/lib/types";
 import { fetchResolution } from "@/lib/useResolve";
 
 export default function SharePage() {
@@ -22,21 +22,6 @@ export default function SharePage() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto max-w-md px-4 py-8">{children}</div>;
-}
-
-/** Add one link to the active case, draft its request and — if consented — send it. Idempotent per URL. */
-function ingest(c: Case, url: string, demo: boolean, platform?: ResolvedPlatform): { next: Case; request: TakedownRequest | undefined } {
-  const existing = c.links.find((l) => l.url === url);
-  if (existing) return { next: c, request: c.requests.find((r) => r.linkIds.includes(existing.id)) };
-
-  const at = new Date().toISOString();
-  let next = addLink(c, url, at, platform);
-  const link = next.links[next.links.length - 1];
-  const [req] = draftRequests({ ...next, links: [link] }, at);
-  next = { ...next, requests: [...next.requests, req] };
-  const canAutoSend = next.autoSendConsent && !next.reviewEachBeforeSending && !!next.attestation.signedAt && !!req.channel;
-  if (canAutoSend) next = markSent(next, [req.id], at, demo);
-  return { next, request: next.requests.find((r) => r.id === req.id) };
 }
 
 function ShareTarget() {
@@ -62,7 +47,7 @@ function ShareTarget() {
     }
     const current = getCase();
     if (!current) return;
-    const { next, request } = ingest(current, url, demo, platform);
+    const { next, request } = addLinkWithRequest(current, url, new Date().toISOString(), demo, platform);
     if (next !== current) setCase(next);
     setRequestId(request?.id ?? null);
   };

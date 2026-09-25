@@ -22,7 +22,8 @@ class MemoryCaseStore implements CaseStore {
     this.cases.delete(id);
   }
   async listOpen() {
-    return [...this.cases.values()].filter((c) => c.requests.some((r) => r.status !== "removed" && r.status !== "rejected"));
+    // Removed content stays monitored for re-uploads, so any case with a sent request is "open".
+    return [...this.cases.values()].filter((c) => c.requests.some((r) => r.sentAt));
   }
 }
 
