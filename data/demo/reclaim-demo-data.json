@@ -1,0 +1,315 @@
+{
+  "meta": {
+    "verifiedOn": "2026-09-25",
+    "rules": [
+      "Platforms, laws, helplines and statistics are real and were checked on the date above.",
+      "People, posts and case URLs are fictional. Case URLs use example paths or the reserved .example domain.",
+      "Case timings are illustrative, taken from the app's demo script, not measured platform performance.",
+      "Never show a real person, a real post URL, or any intimate image in a demo."
+    ],
+    "removedAfterCheck": [
+      "'96% of deepfakes are non-consensual': the 2019 Deeptrace report says 96% were pornographic, not non-consensual. Replaced by the 2023 98% figure.",
+      "'300,000+ images removed, 90%+ removal rate' for StopNCII: not found at source. Replaced by SWGfL's published 434,000+ hashes."
+    ],
+    "linksCheckedOn": "2026-09-25",
+    "appTargetsNeedingFix": [
+      "data/platforms.json 'instagram' target https://help.instagram.com/contact/ shows 'page isn't available'",
+      "data/platforms.json 'facebook' target https://www.facebook.com/help/contact/ is 'Page not found'",
+      "data/platforms.json 'tumblr' target https://www.tumblr.com/abuse redirects to general guidelines"
+    ]
+  },
+  "law": {
+    "name": "TAKE IT DOWN Act",
+    "citation": "S.146, 119th Congress",
+    "enforcementStart": "2026-05-19",
+    "enforcer": "Federal Trade Commission",
+    "removalWindowHours": 48,
+    "alsoRemove": "Known identical copies, within the same 48 hours",
+    "maxCivilPenaltyPerViolationUSD": 53088,
+    "validRequestMustInclude": [
+      "A physical or electronic signature",
+      "Information to identify and locate the image",
+      "A brief good-faith statement that it was shared without consent",
+      "Contact information for the person making the request"
+    ],
+    "coveredPlatforms": "Public websites, apps and online services that mainly host user content, such as social media, messaging, image or video sharing, and gaming",
+    "sources": [
+      "https://www.congress.gov/bill/119th-congress/senate-bill/146/text",
+      "https://www.ftc.gov/business-guidance/resources/complying-take-it-down-act",
+      "https://www.ftc.gov/business-guidance/blog/2026/05/take-it-down-act-enforcement-starts-now-what-know-about-ftc-tida"
+    ]
+  },
+  "stats": [
+    {
+      "value": "98%",
+      "text": "of deepfake videos online are porn",
+      "source": "2023 report, cited by UN Women (2026)",
+      "url": "https://www.unwomen.org/en/articles/explainer/when-justice-fails-why-women-cant-get-protection-from-ai-deepfake-abuse",
+      "quote": "deepfake pornography made up 98 percent of all deepfake videos online"
+    },
+    {
+      "value": "99%",
+      "text": "of deepfake porn depicts women",
+      "source": "2023 report, cited by UN Women (2026)",
+      "url": "https://www.unwomen.org/en/articles/explainer/when-justice-fails-why-women-cant-get-protection-from-ai-deepfake-abuse",
+      "quote": "and 99 per cent depicted women"
+    },
+    {
+      "value": "4%",
+      "text": "of people who reported to the UK Revenge Porn Helpline also went to police",
+      "source": "National Police Chiefs' Council (UK), 16 Sep 2025",
+      "url": "https://news.npcc.police.uk/releases/police-work-with-the-revenge-porn-helpline-to-combat-intimate-image-abuse",
+      "quote": "only 4% of people who reported their abuse to the helpline also reported to the police"
+    },
+    {
+      "value": "48h",
+      "text": "is how long platforms have by federal law to remove it, and known identical copies",
+      "source": "FTC, 19 May 2026",
+      "url": "https://www.ftc.gov/business-guidance/blog/2026/05/take-it-down-act-enforcement-starts-now-what-know-about-ftc-tida",
+      "quote": "remove the content, along with any known identical copies, within 48 hours"
+    },
+    {
+      "value": "$53,088",
+      "text": "maximum civil penalty per violation",
+      "source": "FTC, 19 May 2026",
+      "url": "https://www.ftc.gov/business-guidance/blog/2026/05/take-it-down-act-enforcement-starts-now-what-know-about-ftc-tida",
+      "quote": "potential civil penalties of $53,088 per violation"
+    },
+    {
+      "value": "434,000+",
+      "text": "image fingerprints created through StopNCII, protecting 182,000 people in its first two years",
+      "source": "SWGfL, 30 Nov 2023",
+      "url": "https://swgfl.org.uk/magazine/continuing-the-global-efforts-to-prevent-non-consensual-intimate-image-sharing/",
+      "quote": "StopNCII.org has received over 434,000 hashes"
+    }
+  ],
+  "resources": [
+    {
+      "name": "CCRI Image Abuse Helpline",
+      "detail": "Free, 24/7",
+      "phone": "1-844-878-2274",
+      "url": "https://cybercivilrights.org/ccri-safety-center/",
+      "check": "Opened in a browser on 2026-09-25."
+    },
+    {
+      "name": "StopNCII",
+      "detail": "On-device fingerprinting to block re-uploads on partner platforms",
+      "url": "https://stopncii.org/",
+      "check": "Opened in a browser on 2026-09-25."
+    },
+    {
+      "name": "NCMEC Take It Down",
+      "detail": "For images taken when the person was under 18",
+      "url": "https://takeitdown.ncmec.org/",
+      "check": "Opened in a browser on 2026-09-25."
+    }
+  ],
+  "platforms": [
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "channel": "form",
+      "target": "https://www.reddit.com/report",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Returns the report page to a normal browser request. This test browser cannot open reddit.com.",
+      "link": "https://www.reddit.com/report",
+      "linkType": "form"
+    },
+    {
+      "id": "x",
+      "name": "X",
+      "channel": "form",
+      "target": "https://help.x.com/en/forms/safety-and-sensitive-content",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Policy page with reporting steps, opened in a browser. X's direct form refused to load in the test browser, so it is not linked.",
+      "link": "https://help.x.com/en/rules-and-policies/intimate-media",
+      "linkType": "help page"
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "channel": "form",
+      "target": "https://help.instagram.com/contact/",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Opened in a browser. The old help.instagram.com/contact/ link showed \"page isn't available\".",
+      "link": "https://help.instagram.com/1769410010008691",
+      "linkType": "help page"
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook",
+      "channel": "form",
+      "target": "https://www.facebook.com/help/contact/",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Meta's NCII reporting page for its platforms, title confirmed in a browser. The old facebook.com/help/contact/ link was \"Page not found\".",
+      "link": "https://www.meta.com/help/policies/1437976901029950/",
+      "linkType": "help page"
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "channel": "form",
+      "target": "https://www.tiktok.com/legal/report/feedback",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Opened in a browser. Report form with topic picker.",
+      "link": "https://www.tiktok.com/legal/report/feedback",
+      "linkType": "form"
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "channel": "form",
+      "target": "https://support.google.com/youtube/answer/142443",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Opened in a browser. Privacy Complaint Process.",
+      "link": "https://support.google.com/youtube/answer/142443",
+      "linkType": "help page"
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "channel": "form",
+      "target": "https://dis.gd/request",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Opened in a browser. Needs a Discord Support sign-in first.",
+      "link": "https://dis.gd/request",
+      "linkType": "form"
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "channel": "email",
+      "target": "abuse@telegram.org",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Address confirmed on Telegram's FAQ.",
+      "link": "mailto:abuse@telegram.org",
+      "linkType": "email"
+    },
+    {
+      "id": "tumblr",
+      "name": "Tumblr",
+      "channel": "form",
+      "target": "https://www.tumblr.com/abuse",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Opened in a browser. tumblr.com/abuse and /abuse/privacy both redirect to the general guidelines, so they are not linked.",
+      "link": "https://help.tumblr.com/knowledge-base/reporting-content/",
+      "linkType": "help page"
+    },
+    {
+      "id": "pornhub",
+      "name": "Pornhub",
+      "channel": "form",
+      "target": "https://www.pornhub.com/content-removal",
+      "coveredByAct": true,
+      "fictional": false,
+      "check": "Returns the removal form page to a normal browser request. This test browser cannot open the site.",
+      "link": "https://www.pornhub.com/content-removal",
+      "linkType": "form"
+    },
+    {
+      "id": "google-search",
+      "name": "Google Search",
+      "channel": "form",
+      "target": "https://support.google.com/websearch/troubleshooter/3111061",
+      "coveredByAct": false,
+      "fictional": false,
+      "check": "Opened in a browser. Google's request to remove personal content from Search.",
+      "link": "https://support.google.com/websearch/troubleshooter/3111061",
+      "linkType": "form"
+    },
+    {
+      "id": "imgvault",
+      "name": "ImgVault",
+      "channel": "email",
+      "target": "takedown@imgvault.example",
+      "coveredByAct": true,
+      "fictional": true,
+      "check": "fictional",
+      "note": "Made-up host on a reserved .example domain, for the demo only.",
+      "link": null,
+      "linkType": null
+    }
+  ],
+  "demoCase": {
+    "fictional": true,
+    "survivor": "Jordan Ellis",
+    "story": "A deepfake of Jordan was posted on a forum, reposted on X, uploaded to an image host, and shows up when her name is searched.",
+    "findings": [
+      {
+        "platform": "Reddit",
+        "where": "a post in r/exampleforum",
+        "url": "https://www.reddit.com/r/exampleforum/comments/q7k2p9/example_post/",
+        "foundBy": "Fingerprint match",
+        "action": "Removal request under the Act",
+        "status": "Removed",
+        "detail": "19h 42m after the request"
+      },
+      {
+        "platform": "X",
+        "where": "a repost by @example_account",
+        "url": "https://x.com/example_account/status/1839201934817729000",
+        "foundBy": "Reverse image search",
+        "action": "Removal request under the Act",
+        "status": "Overdue",
+        "detail": "Missed 48h. Reminders at 24h and 44h, FTC complaint drafted"
+      },
+      {
+        "platform": "ImgVault",
+        "where": "an anonymous upload",
+        "url": "https://imgvault.example/v/a7Qx2Lm9",
+        "foundBy": "Reverse image search",
+        "action": "Removal request by email",
+        "status": "Sent",
+        "detail": "48-hour clock running"
+      },
+      {
+        "platform": "Google Search",
+        "where": "results for her name",
+        "url": "https://www.google.com/search?q=%22Jordan%20Ellis%22",
+        "foundBy": "Name search",
+        "action": "Ask Google to remove the results",
+        "status": "Acknowledged",
+        "detail": "Google confirmed it received the request"
+      }
+    ],
+    "timeline": [
+      {
+        "t": "0:00",
+        "event": "Jordan describes what happened in the chat"
+      },
+      {
+        "t": "0:06",
+        "event": "4 places found, one action suggested for each"
+      },
+      {
+        "t": "0:09",
+        "event": "Jordan reviews and approves 4 requests. 48-hour clocks start"
+      },
+      {
+        "t": "19:42",
+        "event": "Reddit removes the post"
+      },
+      {
+        "t": "24:00",
+        "event": "Reminder drafted for X"
+      },
+      {
+        "t": "44:00",
+        "event": "Second reminder drafted for X"
+      },
+      {
+        "t": "48:00",
+        "event": "X misses the legal deadline. FTC complaint drafted for Jordan to review"
+      }
+    ]
+  }
+}

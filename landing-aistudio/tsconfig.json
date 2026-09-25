@@ -16,9 +16,13 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
+    "resolveJsonModule": true,
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@data/*": [
+        "../data/*"
       ]
     },
     "allowImportingTsExtensions": true,
