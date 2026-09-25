@@ -1,0 +1,142 @@
+{
+  "base": "http://localhost:3200",
+  "at": "2026-09-25T20:29:35.710Z",
+  "summary": [
+    {
+      "viewport": "desktop",
+      "actionCount": 14,
+      "actions": [
+        "select 18 or older",
+        "click Start",
+        "click Draft my requests",
+        "click Live detection",
+        "click Yes to all likely",
+        "click Add to my requests",
+        "click Send all",
+        "Shift+D",
+        "click Simulate platform responses",
+        "click Review & file complaint",
+        "go back to tracker",
+        "Shift+D",
+        "click Fast-forward 3 days",
+        "share a link (phone)"
+      ],
+      "longestWait": {
+        "step": "FTC summary (Gemini)",
+        "ms": 8834
+      },
+      "waits": [
+        {
+          "step": "landing → case",
+          "ms": 12
+        },
+        {
+          "step": "draft (Gemini greetings)",
+          "ms": 4981
+        },
+        {
+          "step": "open detection",
+          "ms": 5
+        },
+        {
+          "step": "detection scan",
+          "ms": 7828
+        },
+        {
+          "step": "add detected → requests",
+          "ms": 3337
+        },
+        {
+          "step": "send → tracker",
+          "ms": 27
+        },
+        {
+          "step": "open FTC page",
+          "ms": 16
+        },
+        {
+          "step": "FTC summary (Gemini)",
+          "ms": 8834
+        },
+        {
+          "step": "fast-forward re-check",
+          "ms": 4808
+        }
+      ],
+      "consoleErrors": [],
+      "screenshots": 18
+    },
+    {
+      "viewport": "mobile",
+      "actionCount": 14,
+      "actions": [
+        "select 18 or older",
+        "click Start",
+        "click Draft my requests",
+        "click Live detection",
+        "click Yes to all likely",
+        "click Add to my requests",
+        "click Send all",
+        "Shift+D",
+        "click Simulate platform responses",
+        "click Review & file complaint",
+        "go back to tracker",
+        "Shift+D",
+        "click Fast-forward 3 days",
+        "share a link (phone)"
+      ],
+      "longestWait": {
+        "step": "FTC summary (Gemini)",
+        "ms": 10362
+      },
+      "waits": [
+        {
+          "step": "landing → case",
+          "ms": 13
+        },
+        {
+          "step": "draft (Gemini greetings)",
+          "ms": 3943
+        },
+        {
+          "step": "open detection",
+          "ms": 15
+        },
+        {
+          "step": "detection scan",
+          "ms": 7828
+        },
+        {
+          "step": "add detected → requests",
+          "ms": 2461
+        },
+        {
+          "step": "send → tracker",
+          "ms": 27
+        },
+        {
+          "step": "open FTC page",
+          "ms": 17
+        },
+        {
+          "step": "FTC summary (Gemini)",
+          "ms": 10362
+        },
+        {
+          "step": "fast-forward re-check",
+          "ms": 4313
+        }
+      ],
+      "consoleErrors": [],
+      "screenshots": 18
+    }
+  ],
+  "probes": {
+    "storedKeysAfterUnder18": 0,
+    "offlineDraftMs": 85,
+    "offlinePageErrors": [],
+    "slowDraftStaticMs": 14050,
+    "requestsAfterDoubleClickDraft": 4,
+    "sentActivitiesAfterDoubleClickSend": 4
+  }
+}
