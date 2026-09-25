@@ -2,18 +2,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowRight, Bell, Check, FileText, Globe, Lock, LogOut, MessageCircle, Phone,
-  RotateCcw, Scale, Search, Send, ShieldCheck, Sparkles, Timer, Route,
+  RotateCcw, Scale, Search, Send, Sparkles, Timer, Route, Fingerprint, ScanSearch, UserCheck, ImagePlus,
 } from 'lucide-react';
 
 // Brand: white ground, ink #0E1116, one bright red #E1261C (deep #B3130F), heavy Plus Jakarta Sans.
 const EASE = [0.2, 0.7, 0.2, 1] as const;
 const display = 'font-[800] tracking-[-0.04em]';
 
+// Logo: return shield (protection + taking it back).
 function Mark({ size = 36 }: { size?: number }) {
   return (
-    <span className="grid place-items-center rounded-[10px] bg-[#E1261C] text-white" style={{ width: size, height: size }}>
-      <ShieldCheck size={size * 0.58} strokeWidth={2.4} />
-    </span>
+    <svg width={size} height={size} viewBox="0 0 96 96" role="img" aria-label="Reclaim" className="shrink-0">
+      <rect width="96" height="96" rx="24" fill="#E1261C" />
+      <path d="M48 18 L72 27 V47 C72 63 61 73 48 78 C35 73 24 63 24 47 V27 Z" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M58 50 A11 11 0 1 1 49 39 L55 39" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" />
+      <path d="M50 32 L57 39 L50 46" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -305,6 +309,39 @@ function Process() {
   );
 }
 
+/* ---------- How it searches ---------- */
+
+const METHODS = [
+  { icon: <Fingerprint size={20} />, name: 'Fingerprint', where: 'On your phone', finds: 'Exact and near-exact copies', how: 'Your image is turned into a digital fingerprint on your own device. Only the fingerprint is shared with platforms, the same method StopNCII uses to remove 300,000+ images.' },
+  { icon: <ScanSearch size={20} />, name: 'Reverse image search', where: 'Google Cloud Vision', finds: 'Copies and edits anywhere public', how: 'Searches the open web for pages showing your image or a close variation. Checked, then deleted. Never stored.' },
+  { icon: <UserCheck size={20} />, name: 'Face match', where: 'Verified users only', finds: 'Deepfakes of you', how: 'A deepfake is a new image, so only your face can find it. Face match only runs after you verify it\u2019s you, so no one can search for someone else.' },
+];
+
+function HowItSearches() {
+  return (
+    <section className="py-16">
+      <div className="mx-auto max-w-[1240px] px-5 md:px-8">
+        <p className="text-sm font-semibold text-[#E1261C]">How it searches</p>
+        <h2 className={`${display} mt-3 max-w-[20ch] text-4xl leading-[1.02] md:text-6xl`}>A link finds one copy. Your image finds the rest.</h2>
+        <div className="mt-8 grid gap-4 lg:grid-cols-3">
+          {METHODS.map((m, i) => (
+            <motion.div key={m.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }} transition={{ delay: i * 0.1, duration: 0.6, ease: EASE }} whileHover={{ y: -4 }} className="rounded-3xl bg-[#F5F6F8] p-6">
+              <div className="flex items-center justify-between">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-[#E1261C]">{m.icon}</span>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#4B5563]">{m.where}</span>
+              </div>
+              <p className="mt-5 text-xl font-[800] tracking-[-0.02em]">{m.name}</p>
+              <p className="mt-1 text-sm font-semibold text-[#B3130F]">Finds: {m.finds}</p>
+              <p className="mt-3 text-sm leading-relaxed text-[#4B5563]">{m.how}</p>
+            </motion.div>
+          ))}
+        </div>
+        <p className="mt-6 flex items-center gap-2 text-sm text-[#4B5563]"><Lock size={14} className="text-[#E1261C]" /> Every image is deleted once the search is done. Nothing is stored, and nothing is sent without your okay.</p>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- Try it: ask-anything demo ---------- */
 
 const SUGGEST = ['A fake of me is on a forum', 'My photo was leaked', 'Someone is threatening to post'];
@@ -313,44 +350,60 @@ function TryIt() {
   const [text, setText] = useState('');
   const [err, setErr] = useState('');
   const [phase, setPhase] = useState<'idle' | 'scan' | 'done'>('idle');
+  const [file, setFile] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const run = (q?: string) => {
     const v = (q ?? text).trim();
-    if (!v) { setErr('Tell us a little first, or tap an example.'); return; }
+    if (!v && !file) { setErr('Tell us a little, add a screenshot, or tap an example.'); return; }
     setText(v); setErr(''); setPhase('scan');
-    setTimeout(() => setPhase('done'), 2600);
+    setTimeout(() => setPhase('done'), 3600);
   };
   return (
     <section id="try" className="relative overflow-hidden py-16">
       <div className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(225,38,28,0.16),transparent)]" />
       <div className="relative mx-auto max-w-[760px] px-5 text-center">
-        <Mark size={52} />
+        <div className="flex justify-center"><Mark size={52} /></div>
         <h2 className={`${display} mt-6 text-4xl leading-[1.02] md:text-6xl`}>What happened?</h2>
         <p className="mt-4 text-[#4B5563]">Try the agent. This is a demo, nothing is searched or sent.</p>
         <form onSubmit={(e) => { e.preventDefault(); run(); }} className="mt-8 rounded-[28px] bg-white p-3 text-left shadow-[0_24px_60px_-28px_rgba(14,17,22,0.35)]">
           <div className="flex items-center gap-2">
-            <MessageCircle size={20} className="ml-2 shrink-0 text-[#9CA3AF]" />
-            <input value={text} onChange={(e) => { setText(e.target.value); setErr(''); }} placeholder="Paste a link, or tell us in your own words" className="h-12 flex-1 bg-transparent text-[16px] outline-none placeholder:text-[#9CA3AF]" aria-label="What happened" />
+            <button type="button" onClick={() => fileRef.current?.click()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#4B5563] hover:bg-[#F5F6F8]" aria-label="Add a screenshot or video"><ImagePlus size={20} /></button>
+            <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFile(f.name); setErr(''); } e.target.value = ''; }} />
+            <input value={text} onChange={(e) => { setText(e.target.value); setErr(''); }} placeholder="Paste a link, add a screenshot, or tell us what happened" className="h-12 flex-1 bg-transparent text-[16px] outline-none placeholder:text-[#9CA3AF]" aria-label="What happened" />
             <button type="submit" className="grid h-12 w-12 place-items-center rounded-full bg-[#E1261C] text-white hover:bg-[#B3130F]" aria-label="Start"><ArrowRight size={20} /></button>
           </div>
         </form>
+        {file && (
+          <div className="mt-3 flex items-center justify-between rounded-2xl bg-[#F5F6F8] px-4 py-2.5 text-left text-sm">
+            <span className="flex items-center gap-2 font-semibold"><ImagePlus size={15} className="text-[#E1261C]" />{file}<span className="font-normal text-[#6B7280]">· stays on this device in the demo, never stored</span></span>
+            <button onClick={() => setFile(null)} className="text-[#6B7280] hover:text-[#0E1116]" aria-label="Remove file">Remove</button>
+          </div>
+        )}
         {err && <p className="mt-2 text-left text-sm text-[#B3130F]">{err}</p>}
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {SUGGEST.map((s) => (
             <button key={s} onClick={() => run(s)} className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium hover:border-[#E1261C] hover:text-[#B3130F]">{s}</button>
           ))}
         </div>
-        <AnimatePresence mode="wait">
+        <>
           {phase === 'scan' && (
-            <motion.div key="scan" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-10 rounded-3xl bg-[#F5F6F8] p-6 text-left">
+            <motion.div key="scan" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mt-10 rounded-3xl bg-[#F5F6F8] p-6 text-left">
               <p className="flex items-center gap-2 font-semibold"><motion.span animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}><Search size={16} className="text-[#E1261C]" /></motion.span> Finder is searching…</p>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white"><motion.div className="h-full bg-[#E1261C]" initial={{ width: '5%' }} animate={{ width: '100%' }} transition={{ duration: 2.4, ease: EASE }} /></div>
+              <div className="mt-4 space-y-3">
+                {['Fingerprint, on your device', 'Reverse image search', 'Face match, verified users only'].map((m, n) => (
+                  <div key={m} className="flex items-center justify-between gap-4 text-sm">
+                    <span className="font-semibold">{m}</span>
+                    <span className="h-1.5 w-32 overflow-hidden rounded-full bg-white"><motion.span className="block h-full bg-[#E1261C]" initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: 1, delay: n * 0.9, ease: EASE }} /></span>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           )}
           {phase === 'done' && (
             <motion.div key="done" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mt-10 rounded-3xl bg-[#F5F6F8] p-6 text-left">
               <p className="font-[800] text-lg">3 places found. Here&rsquo;s what I&rsquo;d do.</p>
               <div className="mt-4 space-y-2">
-                {[['discussion forum', 'Legal request to platform'], ['image host', 'Legal request to platform'], ['search result', 'Ask search to de-list it']].map(([s, a], n) => (
+                {[['discussion forum · fingerprint match', 'Legal request to platform'], ['image host · reverse search', 'Legal request to platform'], ['deepfake video · face match', 'Legal request + police report']].map(([s, a], n) => (
                   <motion.div key={s} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: n * 0.15 }} className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
                     <span className="font-semibold">{s}</span><span className="text-sm font-semibold text-[#B3130F]">{a}</span>
                   </motion.div>
@@ -363,7 +416,7 @@ function TryIt() {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </>
       </div>
     </section>
   );
@@ -494,6 +547,7 @@ export function Landing({ onQuickExit }: { onQuickExit: () => void }) {
       <main>
         <Hero />
         <Process />
+        <HowItSearches />
         <TryIt />
         <Agents />
         <Measure />
