@@ -18,7 +18,7 @@ const mem = () => {
 describe("age gate", () => {
   let localStorage: ReturnType<typeof mem>;
   let sessionStorage: ReturnType<typeof mem>;
-  const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+  const fetchMock = vi.fn<(input: unknown, init?: RequestInit) => Promise<Response>>(async () => new Response(null, { status: 204 }));
 
   beforeEach(() => {
     vi.resetModules();
