@@ -193,6 +193,9 @@ function Hero() {
 }
 
 const STEPS = DATA.flow;
+// The app screen behind each step. Links go through /start so the 18+ check always runs first.
+const STEP_HREF = ["/case", "/case/requests", "/case/requests#send", "/case/tracker", "/case/tracker#recheck"];
+const stepLink = (n: number) => `${APP_URL}?next=${encodeURIComponent(STEP_HREF[n])}`;
 const SECTIONS = ["1. Identification of the content", "2. Good-faith statement of non-consent", "3. Your obligation under the TAKE IT DOWN Act", "4. Contact information", "5. Signature"];
 
 function StepPanel({ i, go }: { i: number; go: (n: number) => void }) {
@@ -282,14 +285,15 @@ function Process() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
           <ol className="space-y-2" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
             {STEPS.map((s, n) => (
-              <li key={s.n}>
-                <button onClick={() => setI(n)} className={`relative w-full overflow-hidden rounded-2xl px-5 py-4 text-left transition ${n === i ? "bg-white shadow-[0_12px_30px_-16px_rgba(14,17,22,0.35)]" : "hover:bg-white/60"}`}>
+              <li key={s.n} className={`relative overflow-hidden rounded-2xl transition ${n === i ? "bg-white shadow-[0_12px_30px_-16px_rgba(14,17,22,0.35)]" : "hover:bg-white/60"}`}>
+                <button onClick={() => setI(n)} className="w-full px-5 py-4 text-left">
                   <span className="flex items-center gap-4">
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-[800] ${n === i ? "bg-[#E1261C] text-white" : n < i ? "bg-[#0E1116] text-white" : "bg-white text-[#9CA3AF]"}`}>{n < i ? <Check size={15} /> : n + 1}</span>
                     <span><span className="block text-lg font-[800] tracking-[-0.02em]">{s.title}</span>{n === i && <span className="mt-0.5 block text-sm text-[#4B5563]">{s.text}</span>}</span>
                   </span>
-                  {n === i && !paused && <motion.span key={i} className="absolute bottom-0 left-0 h-[3px] bg-[#E1261C]" initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }} />}
                 </button>
+                {n === i && <a href={stepLink(n)} className="-mt-2 mb-4 ml-[76px] inline-flex items-center gap-1.5 text-sm font-semibold text-[#E1261C] hover:text-[#B3130F]">Open this step <ArrowRight size={14} /></a>}
+                {n === i && !paused && <motion.span key={i} className="absolute bottom-0 left-0 h-[3px] bg-[#E1261C]" initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }} />}
               </li>
             ))}
           </ol>
