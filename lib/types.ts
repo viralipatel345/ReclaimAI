@@ -43,6 +43,18 @@ export interface CaseLink {
   platform: ResolvedPlatform;
   addedAt: string;
   pageTitle?: string;
+  /** Set when a re-check couldn't tell whether the page is still up. The user decides. */
+  needsUserCheck?: boolean;
+  lastCheck?: { at: string; status: PageStatus };
+}
+
+export type PageStatus = "removed" | "live" | "unclear";
+
+/** A new Google result for the user's own name. Never acted on until she confirms. */
+export interface NameResult {
+  url: string;
+  title: string;
+  foundAt: string;
 }
 
 export type RequestKind = "takedown" | "google_removal" | "refile";
@@ -163,4 +175,11 @@ export interface Case {
   outbox?: OutboundMessage[];
   lastRecheckAt?: string;
   nextRecheckAt?: string;
+  /** Start of the current streak of re-checks with every link removed. 30 days → weekly. */
+  cleanSince?: string;
+  pendingResults?: NameResult[];
+  dismissedResults?: string[];
+  /** Demo mode only: which fixture version each URL serves, and name-search fixture results. */
+  demoPageState?: Record<string, PageStatus>;
+  demoNameResults?: { url: string; title: string }[];
 }

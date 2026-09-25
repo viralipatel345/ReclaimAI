@@ -38,6 +38,7 @@ export function createDemoCase(now: number = Date.now()): Case {
       { role: "agent", at: isoAt(now - 7 * 60000), text: "Got it. Paste each link below — I'll find the right removal channel for every one. You can also add a Google search for your name." },
     ],
     nextRecheckAt: isoAt(now + RECHECK_INTERVAL_DAYS * DAY_MS),
+    demoPageState: { [DEMO_URLS.reddit]: "live", [DEMO_URLS.x]: "live", [DEMO_URLS.imgvault]: "live" },
   };
   return { ...base, requests: draftRequests(base, signedAt) };
 }
