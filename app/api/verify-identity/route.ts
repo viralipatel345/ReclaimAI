@@ -1,13 +1,24 @@
-import { execSync } from "child_process";
+import { GoogleAuth } from "google-auth-library";
 import { NextRequest } from "next/server";
 
+// Document AI ID-proofing processor. Override with DOCAI_PROCESSOR_ENDPOINT to use another
+// project's processor (e.g. for local testing).
 const PROCESSOR_ENDPOINT =
-  "https://us-documentai.googleapis.com/v1/projects/376592949990/locations/us/processors/67f11544406fec10:process";
+  process.env.DOCAI_PROCESSOR_ENDPOINT ??
+  "https://us-documentai.googleapis.com/v1/projects/277532942612/locations/us/processors/858c3f1bb62a3e1f:process";
+const PROCESSOR_PROJECT = PROCESSOR_ENDPOINT.match(/projects\/([^/]+)/)?.[1] ?? "";
 
-const GCLOUD = "/Users/viralipatel/Downloads/vertex-ai-demo/google-cloud-sdk/bin/gcloud";
+const MAX_BYTES = 10 * 1024 * 1024;
+const ALLOWED_TYPES = /^(image\/(jpeg|png|webp|heic|heif|tiff|gif|bmp)|application\/pdf)$/;
 
-function getAccessToken(): string {
-  return execSync(`${GCLOUD} auth print-access-token`).toString().trim();
+// Application Default Credentials: the Cloud Run service account in production,
+// `gcloud auth application-default login` on a laptop. No CLI calls, no paths.
+const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+
+async function getAccessToken(): Promise<string> {
+  const token = await auth.getAccessToken();
+  if (!token) throw new Error("No Google credentials available for Document AI");
+  return token;
 }
 
 function normalize(text: string): string {
@@ -48,15 +59,23 @@ export async function POST(req: NextRequest) {
 
     if (!file)        return Response.json({ error: "No file provided" }, { status: 400 });
     if (!claimedName) return Response.json({ error: "No name provided" }, { status: 400 });
+    if (file.size > MAX_BYTES) return Response.json({ error: "That file is too large (10 MB max)." }, { status: 413 });
+    if (!ALLOWED_TYPES.test(file.type || "")) return Response.json({ error: "Upload a photo (JPG, PNG) or PDF of your ID." }, { status: 415 });
 
     const buffer   = Buffer.from(await file.arrayBuffer());
     const base64   = buffer.toString("base64");
-    const mimeType = file.type || "image/jpeg";
+    const mimeType = file.type;
 
-    const token = getAccessToken();
+    const token = await getAccessToken();
     const docAiRes = await fetch(PROCESSOR_ENDPOINT, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        // Bills/quotas the processor's project (needed for user credentials locally).
+        ...(PROCESSOR_PROJECT ? { "x-goog-user-project": PROCESSOR_PROJECT } : {}),
+      },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({ rawDocument: { content: base64, mimeType } }),
     });
 
