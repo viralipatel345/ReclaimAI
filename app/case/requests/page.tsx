@@ -62,17 +62,18 @@ function RequestsView({ c }: { c: Case }) {
 
   return (
     <div>
-      <Eyebrow>Step 02</Eyebrow>
-      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">
-        {writing.length > 0 ? `Drafting ${c.requests.length} requests…` : n > 0 ? `${n} request${n === 1 ? "" : "s"} ready to send` : "All requests sent"}
-      </h1>
-      <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <p className="max-w-[62ch] text-muted">Fixed legal template, your signature. Gemini writes only the greeting.</p>
-        {c.links.some((l) => l.kind === "content") && (
-          <Link href="/case/detect" className={`${btnSecondary} shrink-0 border-accent text-accent`}>
-            <Icon name="search" size={15} /> Live detection
-          </Link>
-        )}
+      <div className="flex flex-col-reverse gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <Eyebrow>Step 02</Eyebrow>
+          <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">
+            {writing.length > 0 ? `Drafting ${c.requests.length} requests…` : n > 0 ? `${n} request${n === 1 ? "" : "s"} ready to send` : "All requests sent"}
+          </h1>
+          <p className="mt-2 max-w-[62ch] text-muted">Fixed legal template, your signature. Gemini writes only the greeting.</p>
+        </div>
+        {/* Instagram analyzer: always one tap away on step 2. */}
+        <Link href="/case/detect" className={`${btnPrimary} shrink-0 self-start`}>
+          <Icon name="search" size={16} /> Instagram analyzer
+        </Link>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">

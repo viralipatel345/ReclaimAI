@@ -47,7 +47,8 @@ export default function DetectPage() {
 /** Real mode: the Instagram analyzer (sandbox account built around this case) or a real public feed. */
 function RealDetect({ c }: { c: Case }) {
   const [mode, setMode] = useState<"instagram" | "feed">("instagram");
-  const known = c.links.find((l) => l.kind === "content")?.url ?? "";
+  // The analyzer works before any link is added: the bio then points at a fictional archive.
+  const known = c.links.find((l) => l.kind === "content")?.url ?? "https://archive.example/v/a7Qx2Lm9";
   const sandbox: Source = { ...SANDBOX_SOURCE, posts: sandboxAccountFor(c.legalName || "Jordan Ellis", known).posts };
   const tab = (m: typeof mode, label: string) => (
     <button
