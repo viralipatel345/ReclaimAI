@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { GmailConnect } from "@/components/GmailConnect";
 import { PrivacyCard } from "@/components/StepRail";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
 import { addLink, draftRequests, removeLink } from "@/lib/caseOps";
@@ -106,6 +107,9 @@ function CaseForm({ c }: { c: Case }) {
             className="mt-2 h-11 w-full rounded-xl border border-line bg-surface px-4 text-base focus:border-accent focus:outline-none md:text-body"
           />
           {c.contactEmail && !emailOk && <p className="mt-2 text-sm text-overdue">That email doesn’t look complete.</p>}
+          <div className="mt-4">
+            <GmailConnect onConnected={(email) => updateCase((x) => ({ ...x, contactEmail: email }))} />
+          </div>
           <p className="mt-5 flex items-start gap-2 rounded-xl bg-ground p-3 text-xs leading-relaxed text-muted">
             <Icon name="lock" size={14} className="mt-0.5" />
             You’ll never be asked what the images show. Reclaim only needs the links.

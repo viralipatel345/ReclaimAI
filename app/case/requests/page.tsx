@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { SendReview } from "@/components/SendReview";
 import { Icon } from "@/components/Icon";
-import { useDemoMode } from "@/components/Providers";
+import { useAppConfig, useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, Modal, PlatformMark, StatusPill } from "@/components/ui";
 import { displayStatus, markSent, withOpening } from "@/lib/caseOps";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useNow } from "@/lib/useNow";
 import { SECTION } from "@/lib/templates";
 import { fetchOpenings } from "@/lib/openingsClient";
+import { useGmail } from "@/lib/google";
+import { sendViaGmail } from "@/lib/gmailAgent";
+import { GmailConnect } from "@/components/GmailConnect";
 import { Typewriter } from "@/components/Typewriter";
 import type { Case, TakedownRequest } from "@/lib/types";
 
@@ -29,6 +32,9 @@ function RequestsView({ c }: { c: Case }) {
   const [editing, setEditing] = useState<TakedownRequest | null>(null);
   const [reviewQueue, setReviewQueue] = useState<TakedownRequest[] | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const gmail = useGmail();
+  const { testPlatformInbox } = useAppConfig();
   const pending = c.requests.filter((r) => r.status === "ready");
   const n = pending.length;
   const writing = c.requests.filter((r) => r.openingSource === "pending");
@@ -36,15 +42,22 @@ function RequestsView({ c }: { c: Case }) {
 
   const sendAll = async () => {
     if (c.reviewEachBeforeSending || !c.autoSendConsent) return setReviewQueue(pending);
-    // One-time consent given: auto-send. Gmail sending is a stub, so outside demo mode
-    // this falls back to opening each draft for her to send.
-    setSending(true);
-    const res = await fetch("/api/send", { method: "POST" }).catch(() => null);
-    const ok = res?.ok ? ((await res.json()) as { sent: boolean }).sent : false;
-    setSending(false);
-    if (!ok) return setReviewQueue(pending);
-    updateCase((x) => markSent(x, pending.map((r) => r.id), new Date().toISOString(), demo));
-    router.push("/case/tracker");
+    // One-time consent given. Signed in with Google: send for real from her Gmail.
+    if (gmail) {
+      setSending(true);
+      setSendError(null);
+      const out = await sendViaGmail(pending, testPlatformInbox);
+      setSending(false);
+      if (out.failed.length) setSendError(`${out.failed.length} couldn’t be sent from Gmail. Try again, or send them yourself.`);
+      const manual = pending.filter((r) => out.notEmailable.includes(r.id) || out.failed.includes(r.id));
+      if (manual.length) return setReviewQueue(manual); // web forms: open + copy fields
+      return router.push("/case/tracker");
+    }
+    if (demo) {
+      updateCase((x) => markSent(x, pending.map((r) => r.id), new Date().toISOString(), true));
+      return router.push("/case/tracker");
+    }
+    setReviewQueue(pending);
   };
 
   return (
@@ -86,10 +99,16 @@ function RequestsView({ c }: { c: Case }) {
                 : c.autoSendConsent
                   ? "Auto-send is on."
                   : "You’ll send each one yourself."}
-            {demo && <span className="font-medium text-ink">Demo: nothing is actually sent.</span>}
+            {demo ? (
+              <span className="font-medium text-ink">Demo: nothing is actually sent.</span>
+            ) : gmail && testPlatformInbox ? (
+              <span className="font-medium text-ink">Real Gmail, sent to the test inbox standing in for each platform.</span>
+            ) : null}
           </p>
+          {!gmail && !demo && <GmailConnect compact />}
+          {sendError && <p className="text-sm text-overdue">{sendError}</p>}
           <button onClick={sendAll} disabled={n === 0 || sending || writing.length > 0} className={`${btnPrimary} md:min-w-[260px]`}>
-            <Icon name="send" size={17} /> {c.reviewEachBeforeSending || !c.autoSendConsent ? `Review & send ${n}` : `Send all ${n}`} request{n === 1 ? "" : "s"}
+            <Icon name="send" size={17} /> {sending ? "Sending from Gmail…" : `${c.reviewEachBeforeSending || !c.autoSendConsent ? "Review & send" : "Send all"} ${n} request${n === 1 ? "" : "s"}`}
           </button>
         </div>
       </div>

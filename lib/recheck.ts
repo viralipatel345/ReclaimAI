@@ -10,6 +10,8 @@ import { demoFixture } from "@/data/demoPages";
 import { runAgent } from "./agent";
 import { MODELS } from "./config";
 import { chase } from "./escalation";
+import { withTimeout } from "./demoCache";
+import { searchOwnNameGrounded } from "./nameSearch";
 import { fetchPageText, NotTextError, type PageText } from "./pageText";
 import { addNameResults, applyPageStatus, latestRequestFor, scheduleNext } from "./recheckOps";
 import type { Case, PageStatus } from "./types";
@@ -28,7 +30,7 @@ export type PageClassifier = (page: PageText) => Promise<{ status?: string; reas
 
 const defaultClassifier: PageClassifier = async (page) => {
   const run = await runAgent<{ status?: string; reason?: string }>({
-    model: MODELS.fast,
+    model: MODELS.primary, // Gemini 3.1 Pro: judgment call
     systemInstruction:
       "You check whether content reported for removal is still up. You get a page's title and visible TEXT only (all images and media were stripped before you saw it). removed = the page says the content is gone/unavailable/removed or the account is suspended. live = the page clearly still shows the original post or file. unclear = login walls, age gates, errors, captchas, or anything else. Never guess: prefer unclear.",
     contents: [{ role: "user", parts: [{ text: `Title: ${page.title}\nHTTP status: ${page.httpStatus}\nText: ${page.text.slice(0, 3000)}` }] }],
@@ -115,7 +117,9 @@ export async function runRecheck(c: Case, now: number, deps: RecheckDeps): Promi
     if (applied.changed) changes++;
   }
 
-  const results = deps.demo ? (next.demoNameResults ?? []) : await (deps.searchName ?? searchOwnName)(next.legalName).catch(() => []);
+  // Own-name check: Programmable Search if configured, else Gemini with Google Search grounding.
+  const nameSearch = deps.searchName ?? (process.env.GOOGLE_CSE_API_KEY ? searchOwnName : (n: string) => searchOwnNameGrounded(n));
+  const results = deps.demo ? (next.demoNameResults ?? []) : await withTimeout(nameSearch(next.legalName), 30000).catch(() => []);
   const named = addNameResults(next, results, at);
   next = named.next;
   changes += named.added;

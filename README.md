@@ -31,7 +31,9 @@ Requires Node 20.9+ (built and tested on Node 24).
 | `GEMINI_FALLBACK_MODEL` | no | Used automatically on 429 / 503 / 404. Default `gemini-flash-latest`. |
 | `GEMINI_FAST_MODEL`, `GEMINI_GROUNDING_MODEL` | no | Latency-sensitive calls and the Google Search–grounded call. Default `gemini-flash-latest`. |
 | `RECHECK_CRON_SECRET` | for scheduled re-checks | Shared secret Cloud Scheduler sends as `x-reclaim-cron`. Without it, the scheduler endpoint returns 401. |
-| `GOOGLE_CSE_API_KEY`, `GOOGLE_CSE_ID` | no | Programmable Search for the user's **own-name** check. Stubbed (no results) when unset. |
+| `GOOGLE_CLIENT_ID` | for Gmail | OAuth 2.0 **Web** client ID. Enables “Send from my Gmail”: requests go out from her Gmail (Gmail API, `gmail.send`), and platform replies are read (`gmail.readonly`) and classified by Gemini. The token stays in the browser tab. |
+| `TEST_PLATFORM_INBOX` | no | When set, every request email goes to this team inbox, labeled `[Reclaim test → Platform]`, instead of the real platform. Use for rehearsals and judging. |
+| `GOOGLE_CSE_API_KEY`, `GOOGLE_CSE_ID` | no | Programmable Search for the own-name check. When unset, Reclaim uses **Gemini with Google Search grounding**. |
 
 All model names live in `lib/config.ts`.
 
@@ -65,6 +67,25 @@ The demo runs in `DEMO_MODE=true`. Press **Shift+D** on any screen to open the p
 Recovery / rehearsal URLs (demo mode only): `/demo?preset=fresh`, `sent`, `simulated`, `escalation`, `fastforward`.
 
 ---
+
+## Real mode (no simulations)
+
+With `DEMO_MODE` unset, nothing is simulated:
+
+- **Sending** — “Send from my Gmail” signs in with Google; requests go out from her Gmail via the Gmail API. With `TEST_PLATFORM_INBOX` set they go to that team inbox, clearly labeled as a stand-in for each platform. Web-form platforms without a test inbox open the form with copy-paste fields.
+- **Replies** — every minute while the tracker is open, Reclaim reads new replies in each request’s Gmail thread (text only; attachments are never downloaded) and **Gemini** classifies them. Unclear replies, or replies asking for images, wait in *Needs you*.
+- **Reminders** — 24h/44h reminders are sent as replies in the same Gmail thread (only with her auto-send consent).
+- **Live detection** — reads the reported account’s **public RSS/Atom feed** (Tumblr blogs and most blogs have one; Instagram and X don’t) as text, and **Gemini 3.1 Pro** judges each post.
+- **Re-checks** — fetch each real link as text; **Gemini 3.1 Pro** decides removed / live / unclear.
+- **Own-name search** — **Gemini with Google Search grounding**; results are resolved to real URLs and wait for her confirmation.
+- **Deadlines** are real 48-hour clocks. To show an overdue platform, send a real request 2+ days before; *Back up case* on the tracker protects it (Quick exit wipes the browser copy by design).
+
+### Google OAuth setup (for Gmail)
+
+1. In a Google Cloud project: enable the **Gmail API**.
+2. **OAuth consent screen** → External → add the Gmail addresses that will sign in as **test users**.
+3. **Credentials → Create OAuth client ID → Web application**, authorized JavaScript origins: your Cloud Run URL and `http://localhost:3000`.
+4. Set `GOOGLE_CLIENT_ID` (runtime env var; no rebuild needed on Cloud Run).
 
 ## Hard safety rules and where they're enforced
 

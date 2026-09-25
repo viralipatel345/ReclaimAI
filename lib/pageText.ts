@@ -40,20 +40,20 @@ export function htmlToText(html: string): { title: string; text: string } {
     .replace(/<[^>]+>/g, " ")
     .replace(/data:[a-z]+\/[a-z0-9.+-]+;base64,[a-z0-9+/=]+/gi, " ")
     .replace(/https?:\/\/\S+/gi, " ")
-    .replace(/&nbsp;|&#160;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    .replace(/&[a-z]+;|&#x?[0-9a-f]+;/gi, (m) => decodeEntities(m))
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 4000);
   return { title: decodeEntities(title), text };
 }
 
-function decodeEntities(s: string): string {
-  return s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+const NAMED: Record<string, string> = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " ", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", hellip: "…", mdash: "—", ndash: "–", middot: "·" };
+
+export function decodeEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&([a-z]+);/gi, (m, n) => NAMED[n.toLowerCase()] ?? m);
 }
 
 export async function fetchPageText(url: string, fetchImpl: typeof fetch = fetch): Promise<PageText> {
@@ -88,4 +88,36 @@ export async function fetchPageText(url: string, fetchImpl: typeof fetch = fetch
   }
   const html = new TextDecoder().decode(Buffer.concat(chunks));
   return { httpStatus: res.status, ...htmlToText(html) };
+}
+
+/**
+ * Raw text of a page or feed (HTML/XML), same safety rules as fetchPageText: public hosts
+ * only, text types only (non-text bodies are never read), size cap, timeout.
+ */
+export async function fetchRawText(url: string, fetchImpl: typeof fetch = fetch): Promise<{ status: number; text: string; finalUrl: string }> {
+  if (!isFetchableUrl(url)) throw new Error("URL not allowed");
+  const res = await fetchImpl(url, {
+    redirect: "follow",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { Accept: "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.9, text/html;q=0.8", "User-Agent": "ReclaimRecheck/1.0 (+removal verification; text only)" },
+  });
+  const type = res.headers.get("content-type") ?? "";
+  if (!/^(text\/|application\/(rss\+xml|atom\+xml|xml|xhtml\+xml))/i.test(type)) {
+    await res.body?.cancel().catch(() => {});
+    throw new NotTextError(`Refused non-text response (${type || "unknown type"})`);
+  }
+  const reader = res.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (reader) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BYTES) {
+      await reader.cancel().catch(() => {});
+      break;
+    }
+    chunks.push(value);
+  }
+  return { status: res.status, text: new TextDecoder().decode(Buffer.concat(chunks)), finalUrl: res.url || url };
 }

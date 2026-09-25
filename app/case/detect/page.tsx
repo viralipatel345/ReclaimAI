@@ -1,17 +1,19 @@
 "use client";
-// Live detection (demo sandbox). An agent reads the TEXT of each post on the account that
-// posted her content — caption and comments only. Image tiles are never opened.
-// She confirms every match; confirmed posts become a drafted Instagram request.
+// Live detection. An agent reads the TEXT of each post on the account that posted her
+// content — the reported account's public feed (real mode) or the demo sandbox — and
+// Gemini judges each post. Images are never opened. She confirms every match.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SANDBOX_ACCOUNT, type SandboxPost } from "@/data/sandbox";
+import { SANDBOX_ACCOUNT } from "@/data/sandbox";
 import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnPrimary, card, Eyebrow, Loading } from "@/components/ui";
 import { addDetectedLinks, detectContext, ruleLevel, ruleSignals, type Detection, type MatchLevel } from "@/lib/detect";
 import { postJson } from "@/lib/api";
-import { cachedDetection } from "@/lib/demoCache";
+import { cachedDetection, CLIENT_PRO_TIMEOUT_MS } from "@/lib/demoCache";
+import type { PostText } from "@/lib/detect";
+import type { ScanResult } from "@/lib/feeds";
 import { recordAi } from "@/lib/aiStatus";
 import { updateCase, useCase } from "@/lib/useCase";
 import type { Case } from "@/lib/types";
@@ -22,27 +24,77 @@ type Verdict = "yes" | "no";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const DWELL_MS = 1100;
 
+type ScanPost = PostText & { kind?: string };
+
+interface Source {
+  kind: "sandbox" | "feed";
+  title: string;
+  url: string;
+  posts: ScanPost[];
+}
+
+const SANDBOX_SOURCE: Source = { kind: "sandbox", title: `@${SANDBOX_ACCOUNT.handle}`, url: `https://www.instagram.com/${SANDBOX_ACCOUNT.handle}/`, posts: SANDBOX_ACCOUNT.posts };
+
 export default function DetectPage() {
   const c = useCase();
   const demo = useDemoMode();
   if (c === undefined) return <Loading />;
   if (!c) return <p className="text-muted">No active case.</p>;
-  if (!demo)
-    return (
-      <div className={`${card} p-6`}>
-        <p className="text-muted">Live detection runs in the demo sandbox only. Scanning real accounts would mean logging in to platforms, which Reclaim never does.</p>
-      </div>
-    );
-  return <Detector c={c} />;
+  if (demo) return <Detector c={c} source={SANDBOX_SOURCE} />;
+  return <FeedLoader c={c} />;
 }
 
-/** Live Gemini via /api/detect; if the server is unreachable, the recorded verdict, then the rules. */
-async function detectOne(post: SandboxPost, c: Case): Promise<Detection> {
+/** Real mode: find a reported link whose account has a public feed, and read it. */
+function FeedLoader({ c }: { c: Case }) {
+  const [source, setSource] = useState<Source | null>(null);
+  const [failed, setFailed] = useState(false);
+  const started = useRef(false);
+  const candidates = c.links.filter((l) => l.kind === "content");
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    (async () => {
+      for (const l of candidates) {
+        const res = await postJson<ScanResult>("/api/detect/scan", { url: l.url }, 25000);
+        if (res?.posts.length) {
+          const known = new Set(c.links.map((x) => x.url.replace(/\/$/, "")));
+          const posts = res.posts.filter((p) => !known.has(p.url.replace(/\/$/, "")));
+          setSource({ kind: "feed", title: res.account.title, url: res.account.url, posts });
+          return;
+        }
+      }
+      setFailed(true);
+    })();
+  }, [c.links, candidates]);
+  if (failed)
+    return (
+      <div className={`${card} p-6`}>
+        <h1 className="font-display text-2xl font-semibold">No public feed to scan</h1>
+        <p className="mt-2 max-w-[60ch] text-muted">
+          None of the accounts behind your links publish a feed Reclaim can read without logging in (Instagram and X don’t). Tumblr blogs and most blogs do.
+        </p>
+        <Link href="/case/requests" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent">
+          <Icon name="arrow-left" size={14} /> Back to requests
+        </Link>
+      </div>
+    );
+  if (!source)
+    return (
+      <div className={`${card} flex items-center gap-3 p-6 text-muted`} role="status">
+        <Icon name="search" size={18} className="anim-shimmer" /> Finding the public feed of the account that posted your link…
+      </div>
+    );
+  return <Detector c={c} source={source} />;
+}
+
+/** Gemini via /api/detect; in demo only, the recorded verdict if the server is unreachable; then the rules. */
+async function detectOne(post: ScanPost, c: Case, demo: boolean): Promise<Detection> {
   const ctx = detectContext(c);
-  const live = await postJson<Detection>("/api/detect", { post: { id: post.id, url: post.url, caption: post.caption, comments: post.comments }, context: ctx });
+  const live = await postJson<Detection>("/api/detect", { post: { id: post.id, url: post.url, caption: post.caption, comments: post.comments }, context: ctx }, CLIENT_PRO_TIMEOUT_MS);
+  const cached = demo ? cachedDetection(post.id) : undefined;
   const d: Detection =
     live ??
-    (cachedDetection(post.id) ? { ...cachedDetection(post.id)!, source: "cached" } : null) ?? {
+    (cached ? { ...cached, source: "cached" } : null) ?? {
       postId: post.id,
       url: post.url,
       level: ruleLevel(ruleSignals(post, ctx)),
@@ -53,9 +105,10 @@ async function detectOne(post: SandboxPost, c: Case): Promise<Detection> {
   return d;
 }
 
-function Detector({ c }: { c: Case }) {
+function Detector({ c, source }: { c: Case; source: Source }) {
   const router = useRouter();
-  const posts = SANDBOX_ACCOUNT.posts;
+  const demo = useDemoMode();
+  const posts = source.posts;
   const [phase, setPhase] = useState<"idle" | "scanning" | "done">("idle");
   const [cursor, setCursor] = useState(-1);
   const [results, setResults] = useState<Record<string, Detection>>({});
@@ -81,18 +134,25 @@ function Detector({ c }: { c: Case }) {
     setLog([]);
     t0.current = Date.now();
     // Every post is classified in parallel; the scan reveals them in order.
-    const pending = posts.map((p) => detectOne(p, c).catch(() => null));
+    const pending = posts.map((p) => detectOne(p, c, demo).catch(() => null));
     Promise.all(pending).then((all) => {
       const src = all.filter(Boolean).map((d) => d!.source);
       recordAi("Live detection", src.every((x) => x === "gemini") ? "live" : src.some((x) => x === "cached") ? "cached" : "template");
     });
     const found: Detection[] = [];
-    say(`Opening @${SANDBOX_ACCOUNT.handle} on Instagram (sandbox) — same handle as the X account in your case.`);
-    await sleep(700);
-    say("Images are skipped. Reading text only: bio, captions, comments.", "muted");
-    await sleep(700);
-    const known = c.links.find((l) => SANDBOX_ACCOUNT.bio.includes(l.url.replace(/^https?:\/\//, "")));
-    say(known ? `Bio links to ${known.host} — content already in your case.` : "Bio: no links to your case.", known ? "likely" : "muted");
+    if (source.kind === "sandbox") {
+      say(`Opening @${SANDBOX_ACCOUNT.handle} on Instagram (sandbox) — same handle as the X account in your case.`);
+      await sleep(700);
+      say("Images are skipped. Reading text only: bio, captions, comments.", "muted");
+      await sleep(700);
+      const known = c.links.find((l) => SANDBOX_ACCOUNT.bio.includes(l.url.replace(/^https?:\/\//, "")));
+      say(known ? `Bio links to ${known.host} — content already in your case.` : "Bio: no links to your case.", known ? "likely" : "muted");
+    } else {
+      say(`Reading the public feed of ${source.title} (${source.url.replace(/^https?:\/\//, "")}) — the account that posted your link.`);
+      await sleep(600);
+      say(`${posts.length} post${posts.length === 1 ? "" : "s"} found. Images are skipped; Gemini 3.1 Pro reads the text of each one.`, "muted");
+      await sleep(600);
+    }
     for (let i = 0; i < posts.length; i++) {
       setCursor(i);
       const p = posts[i];
@@ -109,7 +169,7 @@ function Detector({ c }: { c: Case }) {
     const n = (lvl: MatchLevel) => found.filter((d) => d.level === lvl).length;
     say(`Done in ${((Date.now() - t0.current) / 1000).toFixed(1)}s · ${n("likely")} likely · ${n("possible")} possible · ${n("unrelated")} unrelated.`, "done");
     say("Nothing is filed until you confirm.", "muted");
-  }, [c, posts, say]);
+  }, [c, posts, say, demo, source.kind, source.title, source.url]);
 
   // Auto-start once. The flag is set when the scan actually starts, so React's dev-mode
   // double mount (which clears the first timer) still starts exactly one scan.
@@ -129,7 +189,7 @@ function Detector({ c }: { c: Case }) {
   const confirmed = flagged.filter((x) => verdicts[x.p.id] === "yes");
 
   /** Confirm `picks` (she chose them) and draft them as one request; Gemini's greeting streams in on Requests. */
-  const addToRequests = (picks: SandboxPost[]) => {
+  const addToRequests = (picks: ScanPost[]) => {
     if (adding || !picks.length) return;
     setAdding(true);
     const at = new Date().toISOString();
@@ -148,15 +208,21 @@ function Detector({ c }: { c: Case }) {
     <div>
       <div className="flex flex-wrap items-center gap-3">
         <Eyebrow>Step 02 · Live detection</Eyebrow>
-        <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-label text-muted">Sandbox · fictional account · synthetic data</span>
+        <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-label text-muted">
+          {source.kind === "sandbox" ? "Sandbox · fictional account · synthetic data" : "Real account · public feed · text only"}
+        </span>
       </div>
       <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">Looking for more copies.</h1>
       <p className="mt-2 max-w-[68ch] text-muted">
-        An agent checks the account that posted your X link for more posts of you. It reads captions and comments only — it never opens an image — and nothing is filed until you confirm.
+        Gemini reads every post on the account that posted your link — text only, never an image. Nothing is filed until you confirm.
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
-        <SandboxProfile cursor={cursor} results={results} verdicts={verdicts} />
+        {source.kind === "sandbox" ? (
+          <SandboxProfile cursor={cursor} results={results} verdicts={verdicts} />
+        ) : (
+          <FeedPanel source={source} cursor={cursor} results={results} verdicts={verdicts} />
+        )}
 
         <div className="space-y-6">
           {phase === "done" && (
@@ -347,6 +413,43 @@ function SandboxProfile({ cursor, results, verdicts }: { cursor: number; results
         })}
       </ul>
       <p className="px-4 py-3 text-center text-label text-muted">Fictional account. Tiles are never opened — only text is read.</p>
+    </section>
+  );
+}
+
+/** Real account: its public feed as text rows. There are no images to show — none are ever fetched. */
+function FeedPanel({ source, cursor, results, verdicts }: { source: Source; cursor: number; results: Record<string, Detection>; verdicts: Record<string, Verdict> }) {
+  return (
+    <section className={`${card} h-fit overflow-hidden`} aria-label={`Account ${source.title}`}>
+      <header className="border-b border-line px-5 py-4">
+        <p className="font-medium">{source.title}</p>
+        <a href={source.url} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-muted underline decoration-line underline-offset-2">
+          {source.url.replace(/^https?:\/\//, "")}
+        </a>
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+          <Icon name="lock" size={12} /> Public feed, read as text. Images are never opened.
+        </p>
+      </header>
+      <ol className="max-h-[560px] divide-y divide-line overflow-y-auto">
+        {source.posts.map((p, i) => {
+          const d = results[p.id];
+          const v = verdicts[p.id];
+          const scanning = cursor === i;
+          return (
+            <li key={p.id} className={`flex items-start gap-3 px-5 py-3 transition-colors ${scanning ? "bg-accent-soft" : ""} ${d?.level === "unrelated" ? "opacity-50" : ""}`}>
+              <span className="mt-0.5 font-mono text-label text-muted">{String(i + 1).padStart(2, "0")}</span>
+              <p className="line-clamp-2 min-w-0 flex-1 text-sm">{p.caption}</p>
+              {scanning ? (
+                <span className="shrink-0 text-label font-medium text-accent">Reading…</span>
+              ) : d && d.level !== "unrelated" ? (
+                <span className={`shrink-0 rounded-md px-2 py-0.5 text-label font-semibold text-white ${v === "no" ? "bg-ink/70" : d.level === "likely" ? "bg-overdue-line" : "bg-accent"}`}>
+                  {v === "yes" ? "Confirmed" : v === "no" ? "Not me" : d.level === "likely" ? "Likely" : "Possible"}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

@@ -103,6 +103,7 @@ describe("no image handling anywhere in the code", () => {
     ["file inputs", /type=["']file["']/],
     ["FileReader", /new FileReader/],
     ["image downloads", /\.blob\(\)|arrayBuffer\(\)\s*;?\s*\/\/\s*image/],
+    ["Gmail attachment downloads", /\/attachments\//],
   ])("does not use %s", (_label, pattern) => {
     const offenders = files.filter((f) => pattern.test(readFileSync(f, "utf8")));
     expect(offenders).toEqual([]);

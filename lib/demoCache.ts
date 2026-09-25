@@ -44,4 +44,7 @@ export function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 export const SERVER_AI_TIMEOUT_MS = 8000;
+/** Gemini Pro judgment calls (detection, re-check, FTC summary) think longer. */
+export const SERVER_PRO_TIMEOUT_MS = 25000;
 export const CLIENT_TIMEOUT_MS = 10000;
+export const CLIENT_PRO_TIMEOUT_MS = 30000;
