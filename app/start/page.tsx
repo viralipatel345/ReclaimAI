@@ -29,8 +29,17 @@ export default function StartPage() {
   const [age, setAge] = useState<"adult" | "minor" | null>(null);
   const demo = useDemoMode();
 
-  const start = () => { if (age) router.push(chooseAge(age)); };
-  const startDemo = () => { resetDemo(); router.push("/case?auto=1"); };
+  // Landing "How it works" links pass ?next=<step>. Only /case screens are allowed, and only after the 18+ check.
+  const nextStep = () => {
+    const next = new URLSearchParams(window.location.search).get("next");
+    return next && /^\/case(\/[a-z]+)?(#[a-z]+)?$/.test(next) ? next : null;
+  };
+  const start = () => {
+    if (!age) return;
+    const route = chooseAge(age);
+    router.push(age === "adult" ? nextStep() ?? route : route);
+  };
+  const startDemo = () => { resetDemo(); router.push(nextStep() ?? "/case?auto=1"); };
 
   return (
     <div className="min-h-screen bg-white font-[var(--font-plus-jakarta),sans-serif] text-[#0E1116]">

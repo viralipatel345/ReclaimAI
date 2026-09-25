@@ -340,7 +340,7 @@ function RecheckStatus({ c }: { c: Case }) {
   const anySent = c.requests.some((r) => r.sentAt);
   if (!anySent) return null;
   return (
-    <div className="rounded-xl border border-panel-line p-4">
+    <div id="recheck" className="scroll-mt-24 rounded-xl border border-panel-line p-4">
       <p className="text-sm">
         {c.lastRecheckAt ? `Last re-check ${shortDateTime(c.lastRecheckAt)}` : "Not re-checked yet"}
         <span className="text-panel-muted"> · next {shortDateTime(c.nextRecheckAt)}</span>

@@ -88,7 +88,7 @@ function RequestsView({ c }: { c: Case }) {
         </div>
       </div>
 
-      <div className="sticky bottom-0 z-30 -mx-4 mt-8 border-t border-line bg-ground/95 px-4 py-4 backdrop-blur md:mx-0 md:rounded-t-2xl md:px-5">
+      <div id="send" className="sticky bottom-0 z-30 -mx-4 mt-8 border-t border-line bg-ground/95 px-4 py-4 backdrop-blur md:mx-0 md:rounded-t-2xl md:px-5">
         <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
           <p className="flex items-center gap-2 text-sm text-muted">
             <Icon name={c.reviewEachBeforeSending ? "eye" : "send"} size={16} />
