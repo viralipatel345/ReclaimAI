@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { jsPDF } from "jspdf";
-import { counts, displayStatus, markSent, simulatePlatformResponses } from "@/lib/caseOps";
+import { counts, displayStatus, markSent } from "@/lib/caseOps";
+import { simulatePlatformResponses } from "@/lib/demo";
 import { DEADLINE_HOURS, HOUR_MS } from "@/lib/config";
 import { buildEvidencePdf } from "@/lib/evidencePdf";
 import { createDemoCase } from "@/lib/seed";
@@ -44,6 +45,7 @@ describe("Simulate platform responses", () => {
 
   it("logs replies as evidence and is idempotent", () => {
     expect(sim.evidence.filter((e) => e.event === "reply")).toHaveLength(2);
+    expect(sim.evidence.filter((e) => e.event === "sent")).toHaveLength(4);
     expect(simulatePlatformResponses(sim, NOW + 1000)).toBe(sim);
   });
 });

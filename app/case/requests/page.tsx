@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EvidencePanel } from "@/components/EvidencePanel";
+import { SendReview } from "@/components/SendReview";
 import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnGhost, btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, Modal, PlatformMark, StatusPill } from "@/components/ui";
@@ -23,10 +24,20 @@ function RequestsView({ c }: { c: Case }) {
   const demo = useDemoMode();
   const [reading, setReading] = useState<TakedownRequest | null>(null);
   const [editing, setEditing] = useState<TakedownRequest | null>(null);
+  const [reviewQueue, setReviewQueue] = useState<TakedownRequest[] | null>(null);
+  const [sending, setSending] = useState(false);
   const pending = c.requests.filter((r) => r.status === "ready");
   const n = pending.length;
 
-  const sendAll = () => {
+  const sendAll = async () => {
+    if (c.reviewEachBeforeSending || !c.autoSendConsent) return setReviewQueue(pending);
+    // One-time consent given: auto-send. Gmail sending is a stub, so outside demo mode
+    // this falls back to opening each draft for her to send.
+    setSending(true);
+    const res = await fetch("/api/send", { method: "POST" }).catch(() => null);
+    const ok = res?.ok ? ((await res.json()) as { sent: boolean }).sent : false;
+    setSending(false);
+    if (!ok) return setReviewQueue(pending);
     updateCase((x) => markSent(x, pending.map((r) => r.id), new Date().toISOString(), demo));
     router.push("/case/tracker");
   };
@@ -57,8 +68,8 @@ function RequestsView({ c }: { c: Case }) {
             {c.reviewEachBeforeSending ? "Review mode is on — you’ll confirm each one." : c.autoSendConsent ? "Auto-send is on. Reclaim will chase every platform for you." : "You’ll send each one yourself."}
             {demo && <span className="font-medium text-ink">Demo: nothing is actually sent.</span>}
           </p>
-          <button onClick={sendAll} disabled={n === 0} className={`${btnPrimary} md:min-w-[260px]`}>
-            <Icon name="send" size={17} /> Send all {n} request{n === 1 ? "" : "s"}
+          <button onClick={sendAll} disabled={n === 0 || sending} className={`${btnPrimary} md:min-w-[260px]`}>
+            <Icon name="send" size={17} /> {c.reviewEachBeforeSending || !c.autoSendConsent ? `Review & send ${n}` : `Send all ${n}`} request{n === 1 ? "" : "s"}
           </button>
         </div>
       </div>
@@ -75,6 +86,17 @@ function RequestsView({ c }: { c: Case }) {
         </Modal>
       )}
       {editing && <EditOpening c={c} r={editing} onClose={() => setEditing(null)} />}
+      {reviewQueue && (
+        <SendReview
+          c={c}
+          queue={reviewQueue}
+          demo={demo}
+          onDone={(sent) => {
+            setReviewQueue(null);
+            if (sent > 0) router.push("/case/tracker");
+          }}
+        />
+      )}
     </div>
   );
 }

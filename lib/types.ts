@@ -76,6 +76,32 @@ export interface TakedownRequest {
   remindersDrafted: number[];
   /** True when "sent" only in demo mode. */
   simulated?: boolean;
+  /** When the user filed an FTC complaint about this request. */
+  escalatedAt?: string;
+  /** Latest platform reply, as classified by parse_reply. */
+  reply?: { status: ReplyStatus; summary: string; at: string };
+}
+
+export type ReplyStatus = "acknowledged" | "removed" | "rejected" | "unclear";
+
+export type OutboundKind = "reminder" | "ftc_complaint";
+
+/** Messages the agent drafts after the first request: reminders and FTC complaints. */
+export interface OutboundMessage {
+  id: string;
+  kind: OutboundKind;
+  requestId: string;
+  platformName: string;
+  createdAt: string;
+  /** 24 / 44 for reminders. */
+  hourMark?: number;
+  subject: string;
+  /** Short model-written paragraph (reminder line or complaint summary); fixed facts live in `body`. */
+  aiText: string;
+  aiSource: "gemini" | "template";
+  body: string;
+  sentAt?: string;
+  simulated?: boolean;
 }
 
 export type EvidenceEvent = "logged" | "sent" | "recheck" | "reply" | "refiled";
@@ -133,6 +159,8 @@ export interface Case {
   evidence: EvidenceEntry[];
   activity: ActivityItem[];
   chat: ChatMessage[];
+  /** Reminders and FTC complaint drafts. Optional for cases saved before step 5. */
+  outbox?: OutboundMessage[];
   lastRecheckAt?: string;
   nextRecheckAt?: string;
 }

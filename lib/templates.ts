@@ -140,3 +140,92 @@ export function renderGoogleRemoval(input: TemplateInput & { searchedName: strin
   ].join("\n");
   return { subject, opening, body };
 }
+
+// ---------- Follow-ups ----------
+
+function stamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+}
+
+export interface FollowUpInput {
+  requestId: string;
+  platformName: string;
+  coveredByAct: boolean;
+  urls: string[];
+  legalName: string;
+  contactEmail: string;
+  signature: string;
+  sentAt: string;
+  deadlineAt: string;
+}
+
+export function defaultReminderLine(hourMark: number): string {
+  return hourMark >= 44
+    ? "This is a final reminder: the content is still available and your removal deadline is only hours away."
+    : "I'm following up on my removal request below. The content is still available.";
+}
+
+/** 24h / 44h reminder. The model supplies only `aiLine`; every fact is fixed. */
+export function renderReminder(input: FollowUpInput & { hourMark: number; aiLine?: string }): { subject: string; body: string; aiLine: string } {
+  const aiLine = sanitizeOpening(input.aiLine, input.platformName, defaultReminderLine(input.hourMark)).replace(/\n+/g, " ");
+  const subject = `${input.hourMark >= 44 ? "Final reminder" : "Reminder"}: removal request ${input.requestId} — ${input.legalName}`;
+  const duty = input.coveredByAct
+    ? `Under Section 3 of the TAKE IT DOWN Act, the content must be removed within 48 hours of my request — by ${stamp(input.deadlineAt)}. If it is not, I intend to report this to the Federal Trade Commission.`
+    : "Please act on my request under your personal content removal policy.";
+  const body = [
+    `Hello ${input.platformName} Trust & Safety team,`,
+    "",
+    aiLine,
+    "",
+    `On ${stamp(input.sentAt)} I sent a removal request (reference ${input.requestId}) for:`,
+    urlList(input.urls),
+    "",
+    duty,
+    "",
+    `${input.legalName}`,
+    `${input.contactEmail}`,
+    `/s/ ${input.signature}`,
+  ].join("\n");
+  return { subject, body, aiLine };
+}
+
+export const FTC_SECTION = {
+  company: "Company",
+  what: "What happened",
+  timeline: "Timeline",
+  links: "Content locations",
+  contact: "Your contact information",
+} as const;
+
+export interface FtcInput extends FollowUpInput {
+  reminders: { hourMark: number; at: string }[];
+  now: string;
+  platformWebsite: string;
+  summary?: string;
+}
+
+export function defaultFtcSummary(i: Pick<FtcInput, "platformName" | "sentAt" | "deadlineAt">): string {
+  return `On ${stamp(i.sentAt)} I sent ${i.platformName} a valid removal request under the TAKE IT DOWN Act for intimate images of me published without my consent. The 48-hour removal deadline passed on ${stamp(i.deadlineAt)} and the content was not removed.`;
+}
+
+/** Complaint text the user files herself on the FTC's site. Facts are never model-generated. */
+export function renderFtcComplaint(i: FtcInput): { sections: { title: string; text: string }[]; summary: string } {
+  const summary = sanitizeOpening(i.summary, i.platformName, defaultFtcSummary(i)).replace(/\n+/g, " ");
+  const overdueHours = Math.max(0, Math.floor((new Date(i.now).getTime() - new Date(i.deadlineAt).getTime()) / 3_600_000));
+  const timeline = [
+    `${stamp(i.sentAt)} — Removal request sent to ${i.platformName} (reference ${i.requestId}), with signature and good-faith statement.`,
+    ...i.reminders.map((r) => `${stamp(r.at)} — ${r.hourMark >= 44 ? "Final reminder" : "Reminder"} sent (${r.hourMark}-hour mark).`),
+    `${stamp(i.deadlineAt)} — 48-hour removal deadline passed.`,
+    `${stamp(i.now)} — Content still not confirmed removed (${overdueHours} hours past the deadline).`,
+  ].join("\n");
+  return {
+    summary,
+    sections: [
+      { title: FTC_SECTION.company, text: `${i.platformName} (${i.platformWebsite})` },
+      { title: FTC_SECTION.what, text: `${summary}\n\nThis appears to violate the platform's obligation under Section 3 of the TAKE IT DOWN Act to remove the depiction within 48 hours of a valid request and to make reasonable efforts to remove known identical copies.` },
+      { title: FTC_SECTION.timeline, text: timeline },
+      { title: FTC_SECTION.links, text: i.urls.join("\n") },
+      { title: FTC_SECTION.contact, text: `${i.legalName}\n${i.contactEmail}` },
+    ],
+  };
+}
