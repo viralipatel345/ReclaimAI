@@ -44,8 +44,12 @@ export function defaultOpening(platformName: string): string {
  * Model output is untrusted: keep it short, plain text, and free of anything that
  * could masquerade as a legal section, a link, or a changed signature.
  */
-export function sanitizeOpening(raw: string | undefined, platformName: string): string {
-  if (!raw) return defaultOpening(platformName);
+export function defaultGoogleOpening(): string {
+  return "Hello Google Search team,\n\nI'm writing to ask you to remove search results that link to intimate images of me shared without my consent. Thank you for handling this promptly.";
+}
+
+export function sanitizeOpening(raw: string | undefined, platformName: string, fallback = defaultOpening(platformName)): string {
+  if (!raw) return fallback;
   const cleaned = raw
     .replace(/\r/g, "")
     .replace(/https?:\/\/\S+/gi, "")
@@ -57,7 +61,7 @@ export function sanitizeOpening(raw: string | undefined, platformName: string): 
     .trim()
     .slice(0, MAX_OPENING_CHARS)
     .trim();
-  return cleaned.length >= 12 ? cleaned : defaultOpening(platformName);
+  return cleaned.length >= 12 ? cleaned : fallback;
 }
 
 function signedDate(iso: string): string {
@@ -116,7 +120,7 @@ export function renderTakedownRequest(input: TemplateInput): RenderedRequest {
 
 /** Request to remove explicit results for the user's own name from Google Search. */
 export function renderGoogleRemoval(input: TemplateInput & { searchedName: string }): RenderedRequest {
-  const opening = sanitizeOpening(input.opening, "Google Search");
+  const opening = sanitizeOpening(input.opening, "Google Search", defaultGoogleOpening());
   const subject = `Request to remove non-consensual explicit results — ${input.legalName}`;
   const body = [
     opening,

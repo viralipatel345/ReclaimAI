@@ -10,6 +10,8 @@ import { addLink, draftRequests, removeLink } from "@/lib/caseOps";
 import { nameSearchUrl, normalizeUrl } from "@/lib/platforms";
 import { ATTESTATION_TEXT } from "@/lib/templates";
 import { updateCase, useCase } from "@/lib/useCase";
+import { useResolveLinks } from "@/lib/useResolve";
+import type { OpeningsResult, OpeningTarget } from "@/lib/draft";
 import type { Case } from "@/lib/types";
 
 export default function TellUsWhere() {
@@ -29,12 +31,14 @@ function CaseForm({ c }: { c: Case }) {
   const router = useRouter();
   const [linkInput, setLinkInput] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const checking = useResolveLinks(c);
   const [attested, setAttested] = useState(!!c.attestation.signedAt);
   const signature = c.attestation.signature;
   const setSignature = (v: string) => updateCase((x) => ({ ...x, attestation: { ...x.attestation, signature: v } }));
 
   const hasNameSearch = c.links.some((l) => l.kind === "name_search");
-  const canDraft = attested && signature.trim().length >= 2 && c.links.length > 0;
+  const canDraft = attested && signature.trim().length >= 2 && c.links.length > 0 && checking.size === 0 && !drafting;
 
   const onAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +52,26 @@ function CaseForm({ c }: { c: Case }) {
     setLinkInput("");
   };
 
-  const onDraft = () => {
+  const onDraft = async () => {
     const at = new Date().toISOString();
+    const signed: Case = { ...c, attestation: { text: ATTESTATION_TEXT, signature: signature.trim(), signedAt: at } };
+    const targets: OpeningTarget[] = draftRequests(signed, at).map((r) => ({
+      platformId: r.platformId,
+      platformName: r.platformName,
+      kind: r.kind,
+    }));
+    setDrafting(true);
+    let openings: Record<string, string> = {};
+    try {
+      const res = await fetch("/api/draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets }) });
+      if (res.ok) openings = ((await res.json()) as OpeningsResult).openings;
+    } catch {
+      // Template openings are used if Gemini is unreachable.
+    }
     updateCase((x) => {
-      const signed = { ...x, attestation: { text: ATTESTATION_TEXT, signature: signature.trim(), signedAt: at } };
-      return { ...signed, requests: draftRequests(signed, at) };
+      const next = { ...x, attestation: signed.attestation };
+      const requests = draftRequests(next, at, openings).map((r) => ({ ...r, openingSource: openings[r.platformId] ? ("gemini" as const) : ("template" as const) }));
+      return { ...next, requests };
     });
     router.push("/case/requests");
   };
@@ -98,9 +117,14 @@ function CaseForm({ c }: { c: Case }) {
                     {l.kind === "name_search" ? `Google results for “${c.legalName}”` : l.url.replace(/^https?:\/\/(www\.)?/, "")}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <PlatformPill platform={l.platform} />
-                    <ChannelTag channel={l.platform.channel} />
+                    <PlatformPill platform={l.platform} checking={checking.has(l.id)} />
+                    {!checking.has(l.id) && <ChannelTag channel={l.platform.channel} />}
                   </div>
+                  {l.platform.source === "search" && l.platform.sources?.[0] && (
+                    <a href={l.platform.sources[0].uri} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-xs text-muted underline decoration-line underline-offset-2 hover:text-accent">
+                      Source: {l.platform.sources[0].title || l.platform.sources[0].uri}
+                    </a>
+                  )}
                 </div>
                 <button onClick={() => updateCase((x) => removeLink(x, l.id))} className="rounded-lg p-1.5 text-muted hover:bg-ground hover:text-ink" aria-label={`Remove ${l.url}`}>
                   <Icon name="x" size={14} />
@@ -154,9 +178,13 @@ function CaseForm({ c }: { c: Case }) {
           />
           <div className="mt-auto pt-5">
             <button onClick={onDraft} disabled={!canDraft} className={`${btnPrimary} w-full`}>
-              Draft my requests <Icon name="arrow" size={18} />
+              {drafting ? "Drafting with Gemini…" : "Draft my requests"} <Icon name={drafting ? "sparkle" : "arrow"} size={18} className={drafting ? "animate-pulse" : ""} />
             </button>
-            {!canDraft && <p className="mt-2 text-center text-xs text-muted">Add at least one link, tick the statement and sign.</p>}
+            {!canDraft && !drafting && (
+              <p className="mt-2 text-center text-xs text-muted">
+                {checking.size > 0 ? "Still finding removal channels…" : "Add at least one link, tick the statement and sign."}
+              </p>
+            )}
           </div>
         </div>
       </section>

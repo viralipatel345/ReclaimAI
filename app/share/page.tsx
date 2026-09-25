@@ -7,9 +7,10 @@ import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
 import { btnPrimary, btnSecondary, card, ChannelTag, Eyebrow, Loading, PlatformPill } from "@/components/ui";
 import { addLink, draftRequests, markSent } from "@/lib/caseOps";
-import { extractUrl, normalizeUrl } from "@/lib/platforms";
-import { setCase, useCase } from "@/lib/useCase";
-import type { Case, TakedownRequest } from "@/lib/types";
+import { extractUrl, matchDirectory, normalizeUrl } from "@/lib/platforms";
+import { getCase, setCase, useCase } from "@/lib/useCase";
+import type { Case, ResolvedPlatform, TakedownRequest } from "@/lib/types";
+import { fetchResolution } from "@/lib/useResolve";
 
 export default function SharePage() {
   return (
@@ -24,12 +25,12 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 /** Add one link to the active case, draft its request and — if consented — send it. Idempotent per URL. */
-function ingest(c: Case, url: string, demo: boolean): { next: Case; request: TakedownRequest | undefined } {
+function ingest(c: Case, url: string, demo: boolean, platform?: ResolvedPlatform): { next: Case; request: TakedownRequest | undefined } {
   const existing = c.links.find((l) => l.url === url);
   if (existing) return { next: c, request: c.requests.find((r) => r.linkIds.includes(existing.id)) };
 
   const at = new Date().toISOString();
-  let next = addLink(c, url, at);
+  let next = addLink(c, url, at, platform);
   const link = next.links[next.links.length - 1];
   const [req] = draftRequests({ ...next, links: [link] }, at);
   next = { ...next, requests: [...next.requests, req] };
@@ -49,10 +50,20 @@ function ShareTarget() {
 
   const sharedUrl = extractUrl(params.get("url")) ?? extractUrl(params.get("text")) ?? extractUrl(params.get("title"));
 
-  const handle = (url: string) => {
-    if (!c) return;
-    const { next, request } = ingest(c, url, demo);
-    if (next !== c) setCase(next);
+  const [resolving, setResolving] = useState(false);
+
+  const handle = async (url: string) => {
+    if (!getCase()) return;
+    let platform: ResolvedPlatform | undefined;
+    if (!matchDirectory(url)) {
+      setResolving(true);
+      platform = (await fetchResolution(url)) ?? undefined;
+      setResolving(false);
+    }
+    const current = getCase();
+    if (!current) return;
+    const { next, request } = ingest(current, url, demo, platform);
+    if (next !== current) setCase(next);
     setRequestId(request?.id ?? null);
   };
 
@@ -80,6 +91,12 @@ function ShareTarget() {
     <Shell>
       <Eyebrow>Shared to Reclaim</Eyebrow>
       <h1 className="mt-2 font-display text-[30px] font-semibold leading-tight">{request?.sentAt ? "Done. We’ve got it from here." : "Add a link"}</h1>
+
+      {resolving && (
+        <p className={`${card} mt-6 flex items-center gap-2 p-5 text-sm text-muted`} aria-live="polite">
+          <Icon name="search" size={16} className="animate-pulse" /> Finding this site’s removal channel with Google Search…
+        </p>
+      )}
 
       {request && link && (
         <section className={`${card} mt-6 overflow-hidden`} aria-live="polite">

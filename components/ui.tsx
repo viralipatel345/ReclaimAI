@@ -33,7 +33,15 @@ export function ChannelTag({ channel }: { channel: Channel | null }) {
   );
 }
 
-export function PlatformPill({ platform }: { platform: ResolvedPlatform }) {
+export function PlatformPill({ platform, checking = false }: { platform: ResolvedPlatform; checking?: boolean }) {
+  if (checking) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-medium text-muted">
+        <Icon name="search" size={13} className="animate-pulse" />
+        Finding the removal channel…
+      </span>
+    );
+  }
   if (platform.source === "unresolved") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-overdue-soft px-2.5 py-1 text-xs font-medium text-overdue">
@@ -47,6 +55,7 @@ export function PlatformPill({ platform }: { platform: ResolvedPlatform }) {
       <Icon name="check" size={13} strokeWidth={2.25} />
       {platform.name}
       {platform.fictional && <span className="font-normal opacity-70">· fictional</span>}
+      {platform.source === "search" && <span className="font-normal opacity-70">· found via Google Search</span>}
     </span>
   );
 }

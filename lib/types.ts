@@ -28,6 +28,8 @@ export interface ResolvedPlatform {
   fictional?: boolean;
   /** Shown to the user when we couldn't confirm a channel. */
   message?: string;
+  /** Google Search sources that grounded a "search" resolution. */
+  sources?: { title: string; uri: string }[];
 }
 
 /** "content" = a page hosting the imagery. "name_search" = Google results for the user's own name. */
@@ -58,6 +60,7 @@ export interface TakedownRequest {
   subject: string;
   /** Short courteous opening — the only model-written part. */
   opening: string;
+  openingSource?: "gemini" | "template" | "user";
   /** Full rendered text: opening + fixed legal template. */
   body: string;
   status: RequestStatus;

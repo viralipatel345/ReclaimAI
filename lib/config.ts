@@ -6,6 +6,8 @@ export const MODELS = {
   primary: process.env.GEMINI_MODEL ?? "gemini-3.1-pro-preview",
   /** Used automatically when the primary model returns 429 / 503. */
   fallback: process.env.GEMINI_FALLBACK_MODEL ?? "gemini-flash-latest",
+  /** Low-stakes, latency-sensitive text (request openings, reminders). */
+  fast: process.env.GEMINI_FAST_MODEL ?? "gemini-flash-latest",
   /** Separate call with the googleSearch grounding tool, used by resolve_platform. */
   grounding: process.env.GEMINI_GROUNDING_MODEL ?? "gemini-flash-latest",
 } as const;

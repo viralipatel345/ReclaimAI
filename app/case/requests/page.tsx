@@ -100,7 +100,14 @@ function RequestCard({ r, onRead, onEdit }: { r: TakedownRequest; onRead: () => 
         <span className="shrink-0 rounded-md border border-line px-2 py-0.5 text-[11px] text-muted">{r.coveredByAct ? "TAKE IT DOWN Act · 48h" : "Google policy"}</span>
       </div>
       <blockquote className="mt-3 line-clamp-5 flex-1 whitespace-pre-line rounded-xl bg-ground px-4 py-3 text-sm leading-relaxed text-ink/85">{excerpt}</blockquote>
-      <footer className="mt-3 flex items-center justify-end">
+      <footer className="mt-3 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1 text-[11px] text-muted">
+          {r.openingSource === "gemini" && (
+            <>
+              <Icon name="sparkle" size={12} /> Greeting by Gemini
+            </>
+          )}
+        </span>
         <div className="flex gap-1 whitespace-nowrap">
           <button onClick={onRead} className={btnGhost}>
             <Icon name="eye" size={15} /> Read full request
@@ -118,7 +125,7 @@ function EditOpening({ c, r, onClose }: { c: Case; r: TakedownRequest; onClose: 
   const [opening, setOpening] = useState(r.opening);
   const legal = r.body.slice(r.body.indexOf(SECTION.identification));
   const save = () => {
-    updateCase((x) => ({ ...x, requests: x.requests.map((q) => (q.id === r.id ? withOpening(x, q, opening) : q)) }));
+    updateCase((x) => ({ ...x, requests: x.requests.map((q) => (q.id === r.id ? { ...withOpening(x, q, opening), openingSource: "user" as const } : q)) }));
     onClose();
   };
   return (
