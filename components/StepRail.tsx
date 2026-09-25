@@ -11,7 +11,9 @@ const STEPS = [
 
 export function StepRail() {
   const path = usePathname();
-  const active = STEPS.findIndex((s) => s.href === path);
+  // Sub-pages belong to a step: live detection → 02, FTC complaint → 03.
+  const alias: Record<string, string> = { "/case/detect": "/case/requests", "/case/ftc": "/case/tracker" };
+  const active = STEPS.findIndex((s) => s.href === (alias[path] ?? path));
   return (
     <>
       {/* Desktop rail */}

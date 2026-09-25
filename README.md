@@ -16,7 +16,7 @@ The flow: share a link → the legal request is sent → a 48-hour clock starts 
 npm install
 cp env.example .env.local     # add GEMINI_API_KEY; DEMO_MODE=true seeds the fictional case
 npm run dev                   # http://localhost:3000
-npm test                      # 101 tests
+npm test                      # 116 tests
 ```
 
 Requires Node 20.9+ (built and tested on Node 24).
@@ -43,18 +43,24 @@ The demo runs in `DEMO_MODE=true`. Press **Shift+D** on any screen to open the p
 
 1. **`/`**: one line about the 48-hour right, then the age check. Choosing *Under 18* routes to NCMEC's Take It Down and stores nothing.
 2. **`/case` Tell us where**: live Gemini intake (it never asks what the images show). Paste a link and it resolves to a platform pill plus a channel. An unknown site is looked up with Google Search. Tick the statement, type a signature, then **Draft my requests** (Gemini writes each greeting).
-3. **`/case/requests`**: four request cards, the evidence log, and a PDF. Click **Send all 4 requests**.
-4. **`/case/tracker`**: live 48-hour countdowns. Shift+D → **Simulate platform responses**:
+3. **`/case/requests`**: four request cards, the evidence log, and a PDF.
+4. **Live detection** (the button on the requests page): an agent scans a **sandbox, fictional Instagram account**, the same handle as the X uploader.
+   - It reads captions, comments and the bio as **text only**. Image tiles show "Not opened".
+   - Gemini flags each post (3 likely, 2 possible, 4 unrelated), with a reason for each.
+   - She confirms matches; confirmed posts become one Instagram request (nothing is sent), and a StopNCII.org pointer is shown.
+   - Rules decide the match level, and Gemini can never mark a post "likely" without text evidence, so the result is the same every run.
+   - Then **Send all**.
+5. **`/case/tracker`**: live 48-hour countdowns. Shift+D → **Simulate platform responses**:
    - Reddit removed in 19h 42m
    - Google acknowledged
    - X overdue, with the count-up and **Escalation ready**
-5. **Review & file complaint**: the FTC complaint, with Gemini's summary drafted from the evidence log and every fact taken from the record.
-6. Shift+D → **Fast-forward 3 days**:
+6. **Review & file complaint**: the FTC complaint, with Gemini's summary drafted from the evidence log and every fact taken from the record.
+7. Shift+D → **Fast-forward 3 days**:
    - the recheck agent runs;
    - Reddit is **still removed ✓**;
    - X's post is **back up**, so it's re-filed automatically, citing the original request, with a new 48h card;
    - a new Google result for her name waits in **Needs you** for her confirmation.
-7. **Phone**: install the PWA, then Share → Reclaim from any app. You get *Request sent · 47:59:59*.
+8. **Phone**: install the PWA, then Share → Reclaim from any app. You get *Request sent · 47:59:59*.
 
 Recovery / rehearsal URLs (demo mode only): `/demo?preset=fresh`, `sent`, `simulated`, `escalation`, `fastforward`.
 
@@ -87,6 +93,7 @@ Other privacy defaults: `Referrer-Policy: no-referrer`, the app can't be framed 
 | `draft_request` / `draft_google_removal` | Short first-person greeting (parallel tool calls) | Gets platform names only. Legal sections come from fixed templates (`lib/templates.ts`) |
 | `draft_reminder` / `draft_ftc_complaint` | One reminder line / the complaint summary | Gets timeline facts only (platform, dates, counts), never name, email or links |
 | `parse_reply` | Classifies a pasted platform email; flags requests for images | The text isn't stored; the user confirms the outcome |
+| `flag_post` | Live detection (sandbox): judges one post's caption and comments as likely / possible / unrelated, with a reason | Never sees images; can't make a post "likely" without rule evidence; she confirms every match |
 | `recheck` | Judges ambiguous page **text** (media stripped) | Only after HTTP status and removal-wording rules; unsure → `unclear` → ask the user |
 | `log_evidence`, `prepare_submission`, `start_clock` | Deterministic tools (no model) | SHA-256 of `url + page title`; mailto / Gmail-ready draft / form fields; `deadline = sent + 48h` |
 
@@ -110,7 +117,7 @@ lib/
   store.ts               CaseStore interface: in-memory server store + localStorage mirror
 data/platforms.json      Removal channel directory (10 platforms + fictional ImgVault)
 data/fixtures.ts         Demo page fixtures (no network in demo mode)
-tests/                   Vitest (101 tests)
+tests/                   Vitest (116 tests)
 ```
 
 State lives in the browser (localStorage) and is mirrored to the server through `PUT /api/case`, so the scheduled recheck agent can see it. Both sit behind the `CaseStore` interface in `lib/store.ts`, so Firestore can replace the in-memory store without touching callers.

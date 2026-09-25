@@ -17,7 +17,8 @@ export type ToolName =
   | "parse_reply"
   | "recheck"
   | "draft_reminder"
-  | "draft_ftc_complaint";
+  | "draft_ftc_complaint"
+  | "flag_post";
 
 const str = { type: "string" };
 const bool = { type: "boolean" };
@@ -47,6 +48,18 @@ export const INTAKE_SCHEMA = {
 } as const;
 
 export const TOOL_DECLARATIONS: Record<ToolName, FunctionDeclaration> = {
+  flag_post: {
+    name: "flag_post",
+    description: "Judge whether one post's TEXT (caption, comments) suggests it shares the person's intimate content. You never see images.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        level: { type: "string", enum: ["likely", "possible", "unrelated"] },
+        explanation: { ...str, description: "One short, plain sentence citing the text evidence. Don't describe or speculate about what any image shows." },
+      },
+      required: ["level", "explanation"],
+    },
+  },
   collect_intake: {
     name: "collect_intake",
     description: "Record the full, updated intake state and your reply to the user. Call exactly once per turn.",
