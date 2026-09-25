@@ -20,9 +20,9 @@ export function EvidencePanel({ c }: { c: Case }) {
           <li key={e.id} className="py-3">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm font-medium">{e.platformName}</span>
-              <span className="font-mono text-[11px] text-panel-muted">{shortDateTime(e.at)}</span>
+              <span className="font-mono text-label text-panel-muted">{shortDateTime(e.at)}</span>
             </div>
-            <div className="mt-1 flex items-baseline justify-between gap-3 font-mono text-[11px] text-panel-muted">
+            <div className="mt-1 flex items-baseline justify-between gap-3 font-mono text-label text-panel-muted">
               <span className="uppercase tracking-wider">{e.event}</span>
               <span title={e.fingerprint}>sha256 {e.fingerprint.slice(0, 8)}…{e.fingerprint.slice(-4)}</span>
             </div>

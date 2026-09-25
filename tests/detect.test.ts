@@ -46,6 +46,7 @@ describe("confirmed matches", () => {
     for (const p of picks) expect(r.body).toContain(p.url);
     for (const s of [SECTION.identification, SECTION.goodFaith, SECTION.obligation, SECTION.contact, SECTION.signature]) expect(r.body).toContain(s);
     expect(next.evidence.filter((e) => e.note?.includes("live detection"))).toHaveLength(3);
+    for (const p of picks) expect(next.evidence.filter((e) => e.url === p.url), "one evidence entry per detected post").toHaveLength(1);
     expect(addDetectedLinks(next, picks.map((p) => ({ url: p.url, caption: p.caption })), new Date(NOW).toISOString()).requests).toHaveLength(0);
   });
 });

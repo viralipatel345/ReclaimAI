@@ -8,10 +8,10 @@ export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2.5" aria-label="Reclaim home">
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-        <rect width="26" height="26" rx="8" fill="#3446A8" />
+        <rect width="26" height="26" rx="8" fill="var(--color-accent)" />
         <path d="M8 18V8h5.2a3.3 3.3 0 010 6.6H8 M12.5 14.6L17.5 18" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <span className="font-display text-[22px] font-semibold tracking-tight">Reclaim</span>
+      <span className="font-display text-title font-semibold tracking-tight">Reclaim</span>
     </Link>
   );
 }
@@ -35,7 +35,7 @@ export function AppHeader() {
         >
           <Icon name="exit" size={16} />
           Quick exit
-          <kbd className="hidden rounded-md border border-white/25 px-1.5 font-mono text-[11px] text-white/80 md:inline">Esc</kbd>
+          <kbd className="hidden rounded-md border border-white/25 px-1.5 font-mono text-label text-white/80 md:inline">Esc</kbd>
         </button>
       </div>
       {demo && (

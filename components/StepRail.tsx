@@ -29,7 +29,7 @@ export function StepRail() {
                     <Link
                       href={s.href}
                       aria-current={isActive ? "step" : undefined}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] transition-colors ${isActive ? "bg-surface font-medium text-ink shadow-[0_0_0_1px_var(--color-line)]" : "text-muted hover:text-ink"}`}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-3 text-body transition-colors ${isActive ? "bg-surface font-medium text-ink shadow-[0_0_0_1px_var(--color-line)]" : "text-muted hover:text-ink"}`}
                     >
                       <span className={`font-mono text-xs ${isActive ? "text-accent" : ""}`}>{done ? <Icon name="check" size={14} className="text-removed" strokeWidth={2.25} /> : s.n}</span>
                       {s.label}
@@ -52,7 +52,7 @@ export function StepRail() {
                 aria-current={i === active ? "step" : undefined}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${i === active ? "border-accent bg-accent-soft font-medium text-accent" : "border-line bg-surface text-muted"}`}
               >
-                <span className="font-mono text-[11px]">{s.n}</span>
+                <span className="font-mono text-label">{s.n}</span>
                 <span className="sm:hidden">{s.short}</span>
                 <span className="hidden sm:inline">{s.label}</span>
               </Link>

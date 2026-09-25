@@ -85,7 +85,7 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
   return (
     <div>
       <Eyebrow>Escalation</Eyebrow>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">File a complaint with the FTC.</h1>
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">File a complaint with the FTC.</h1>
       <p className="mt-2 max-w-[64ch] text-muted">
         {r.status === "rejected" ? `${r.platformName} refused a valid removal request.` : `${r.platformName} missed its 48-hour legal deadline.`} The Federal Trade Commission enforces the TAKE IT DOWN Act. Filing takes about ten minutes on the FTC’s website — everything you need is below. Filing is your choice; Reclaim never files for you.
       </p>
@@ -108,7 +108,7 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
                 </p>
               )}
               {i === 1 ? (
-                <div className="mt-3 space-y-4 text-[15px] leading-relaxed">
+                <div className="mt-3 space-y-4 text-body leading-relaxed">
                   {polishing ? (
                     <div className="space-y-2 py-1" aria-label="Gemini is writing the summary">
                       <div className="anim-shimmer h-3.5 w-full rounded bg-line" />
@@ -123,7 +123,7 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
                   <p className="break-words text-muted">{s.text.slice(s.text.indexOf("This appears"))}</p>
                 </div>
               ) : (
-                <p className="mt-3 whitespace-pre-line break-words text-[15px] leading-relaxed">{s.text}</p>
+                <p className="mt-3 whitespace-pre-line break-words text-body leading-relaxed">{s.text}</p>
               )}
             </section>
           ))}
@@ -134,11 +134,11 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
 
         <aside className="order-first h-fit space-y-5 rounded-2xl bg-panel p-6 text-white xl:order-none">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3A6A0]">{r.status === "rejected" ? "Rejected" : "Past deadline"}</p>
+            <p className="font-mono text-label uppercase tracking-[0.14em] text-panel-overdue">{r.status === "rejected" ? "Rejected" : "Past deadline"}</p>
             {r.status === "rejected" ? (
               <p className="mt-2 font-display text-2xl font-semibold">{shortDateTime(r.rejectedAt)}</p>
             ) : (
-              <Countdown deadlineAt={r.deadlineAt!} className="mt-2 block text-[40px] font-medium leading-none text-[#F3A6A0]" />
+              <Countdown deadlineAt={r.deadlineAt!} className="mt-2 block text-display-l font-medium leading-none text-panel-overdue" />
             )}
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -164,14 +164,14 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
             <li className="flex gap-3"><span className="font-mono text-panel-muted">2</span>Copy each section into the matching field.</li>
             <li className="flex gap-3"><span className="font-mono text-panel-muted">3</span>Attach your evidence PDF if asked.</li>
           </ol>
-          <a href={FTC_REPORT_URL} target="_blank" rel="noopener noreferrer" className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-medium text-ink hover:bg-white/90">
+          <a href={FTC_REPORT_URL} target="_blank" rel="noopener noreferrer" className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-body font-medium text-ink hover:bg-white/90">
             Open FTC reporting site <Icon name="external" size={15} />
           </a>
           <button onClick={() => downloadEvidencePdf(c)} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/25 text-sm font-medium hover:bg-white/10">
             <Icon name="download" size={16} /> Download evidence PDF
           </button>
           {filed ? (
-            <p className="flex items-center gap-2 text-sm text-[#6FC39D]">
+            <p className="flex items-center gap-2 text-sm text-panel-removed">
               <Icon name="check" size={16} /> Marked as filed {shortDateTime(r.escalatedAt)}
             </p>
           ) : (

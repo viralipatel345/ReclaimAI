@@ -54,7 +54,7 @@ export function ReplyModal({ r, onClose }: { r: TakedownRequest; onClose: () => 
       {!result ? (
         <>
           <label htmlFor="reply" className="text-sm font-medium">Paste the platform’s email</label>
-          <textarea id="reply" value={text} onChange={(e) => setText(e.target.value)} rows={8} className="mt-2 w-full rounded-xl border border-line p-3 text-[14px] leading-relaxed focus:border-accent focus:outline-none" placeholder="Thanks for your report…" />
+          <textarea id="reply" value={text} onChange={(e) => setText(e.target.value)} rows={8} className="mt-2 w-full rounded-xl border border-line p-3 text-sm leading-relaxed focus:border-accent focus:outline-none" placeholder="Thanks for your report…" />
           <p className="mt-2 text-xs text-muted">Gemini reads it to tell whether they removed it. The text isn’t stored — only the outcome.</p>
         </>
       ) : (
@@ -70,7 +70,7 @@ export function ReplyModal({ r, onClose }: { r: TakedownRequest; onClose: () => 
               <span className="text-sm font-medium">What they said</span>
               <StatusPill status={PILL[result.status]} />
             </div>
-            <p className="mt-2 text-[15px] leading-relaxed">{result.summary}</p>
+            <p className="mt-2 text-body leading-relaxed">{result.summary}</p>
           </div>
           <fieldset>
             <legend className="text-sm font-medium">{result.status === "unclear" ? "We couldn’t tell. What did they decide?" : "Is that right?"}</legend>

@@ -5,7 +5,7 @@ import type { Channel, ResolvedPlatform } from "@/lib/types";
 import { Icon } from "./Icon";
 
 export const btnPrimary =
-  "inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-6 text-[15px] font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-accent";
+  "inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-6 text-body font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-accent";
 export const btnSecondary =
   "inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-medium text-ink transition-colors hover:border-ink/40 disabled:opacity-40";
 export const btnGhost = "inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-accent hover:bg-accent-soft";
@@ -121,7 +121,7 @@ export function Modal({ title, onClose, children, footer }: { title: string; onC
 }
 
 export function Eyebrow({ children }: { children: React.ReactNode }) {
-  return <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">{children}</p>;
+  return <p className="font-mono text-label uppercase tracking-[0.14em] text-muted">{children}</p>;
 }
 
 export function Loading() {

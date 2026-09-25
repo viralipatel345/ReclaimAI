@@ -50,7 +50,7 @@ function RequestsView({ c }: { c: Case }) {
   return (
     <div>
       <Eyebrow>Step 02</Eyebrow>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-tight tracking-tight md:text-display-l">
         {writing.length > 0 ? `Drafting ${c.requests.length} requests…` : n > 0 ? `${n} request${n === 1 ? "" : "s"} ready to send` : "All requests sent"}
       </h1>
       <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -98,11 +98,11 @@ function RequestsView({ c }: { c: Case }) {
         <Modal title={`Request to ${reading.platformName}`} onClose={() => setReading(null)}>
           <dl className="mb-4 grid grid-cols-[72px_minmax(0,1fr)] gap-y-1.5 text-sm">
             <dt className="text-muted">To</dt>
-            <dd className="font-mono text-[13px]">{reading.target ?? "Site contact page"}</dd>
+            <dd className="font-mono text-caption">{reading.target ?? "Site contact page"}</dd>
             <dt className="text-muted">Subject</dt>
             <dd>{reading.subject}</dd>
           </dl>
-          <pre className="whitespace-pre-wrap rounded-xl bg-ground p-4 font-sans text-[14px] leading-relaxed">{reading.body}</pre>
+          <pre className="whitespace-pre-wrap rounded-xl bg-ground p-4 font-sans text-sm leading-relaxed">{reading.body}</pre>
         </Modal>
       )}
       {editing && <EditOpening c={c} r={editing} onClose={() => setEditing(null)} />}
@@ -176,7 +176,7 @@ function RequestCard({ r, onRead, onEdit }: { r: TakedownRequest; onRead: () => 
       </header>
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="min-w-0 truncate font-mono text-xs text-muted">{r.target ?? "Couldn't confirm — use the site's contact page"}</p>
-        <span className="shrink-0 rounded-md border border-line px-2 py-0.5 text-[11px] text-muted">{r.coveredByAct ? "TAKE IT DOWN Act · 48h" : "Google policy"}</span>
+        <span className="shrink-0 rounded-md border border-line px-2 py-0.5 text-label text-muted">{r.coveredByAct ? "TAKE IT DOWN Act · 48h" : "Google policy"}</span>
       </div>
       <div className="mt-3 flex-1 rounded-xl bg-ground px-4 py-3">
         {pending ? (
@@ -193,7 +193,7 @@ function RequestCard({ r, onRead, onEdit }: { r: TakedownRequest; onRead: () => 
         <p className="mt-2 line-clamp-1 text-xs text-muted">{firstLine}</p>
       </div>
       <footer className="mt-3 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1 whitespace-nowrap text-[11px] text-muted">
+        <span className="flex items-center gap-1 whitespace-nowrap text-label text-muted">
           {r.openingSource === "gemini" && (
             <>
               <Icon name="sparkle" size={12} /> Greeting by Gemini
@@ -232,12 +232,12 @@ function EditOpening({ c, r, onClose }: { c: Case; r: TakedownRequest; onClose: 
       }
     >
       <label htmlFor="opening" className="text-sm font-medium">Greeting</label>
-      <textarea id="opening" value={opening} onChange={(e) => setOpening(e.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-line p-3 text-[14px] leading-relaxed focus:border-accent focus:outline-none" />
+      <textarea id="opening" value={opening} onChange={(e) => setOpening(e.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-line p-3 text-sm leading-relaxed focus:border-accent focus:outline-none" />
       <p className="mt-5 flex items-center gap-2 text-sm font-medium">
         <Icon name="lock" size={14} /> Legal sections are fixed
       </p>
       <p className="mt-1 text-xs text-muted">These contain every element the law requires, so they can’t be edited.</p>
-      <pre className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl bg-ground p-4 font-sans text-[13px] leading-relaxed text-muted">{legal}</pre>
+      <pre className="mt-3 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl bg-ground p-4 font-sans text-caption leading-relaxed text-muted">{legal}</pre>
       {c.isDemo && <p className="mt-3 text-xs text-muted">Example case · fictional</p>}
     </Modal>
   );

@@ -87,7 +87,7 @@ function ShareTarget() {
     return (
       <Shell>
         <Eyebrow>Shared to Reclaim</Eyebrow>
-        <h1 className="mt-2 font-display text-[30px] font-semibold leading-tight">Start your case first.</h1>
+        <h1 className="mt-2 font-display text-display-s font-semibold leading-tight">Start your case first.</h1>
         <p className="mt-2 text-muted">It takes a minute. After that, sharing a link is all it takes.</p>
         <Link href="/" className={`${btnPrimary} mt-6 w-full`}>
           Start
@@ -104,7 +104,7 @@ function ShareTarget() {
   return (
     <Shell>
       <Eyebrow>Shared to Reclaim</Eyebrow>
-      <h1 className="mt-2 font-display text-[30px] font-semibold leading-tight">{heading}</h1>
+      <h1 className="mt-2 font-display text-display-s font-semibold leading-tight">{heading}</h1>
 
       {sharedSomething && !sharedUrl && (
         <p className="mt-4 flex gap-2 rounded-xl bg-overdue-soft p-4 text-sm text-overdue" role="status">
@@ -122,7 +122,7 @@ function ShareTarget() {
       {request && link && !resolving && (
         <section className={`${card} mt-6 overflow-hidden`} aria-live="polite">
           <div className="p-5">
-            <p className="truncate font-mono text-[13px]" title={link.url}>
+            <p className="truncate font-mono text-caption" title={link.url}>
               {link.url.replace(/^https?:\/\/(www\.)?/, "")}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -141,7 +141,7 @@ function ShareTarget() {
                   Request sent
                 </span>
                 <span className="text-lg text-muted">·</span>
-                <Countdown deadlineAt={request.deadlineAt!} className="text-[28px] font-medium" />
+                <Countdown deadlineAt={request.deadlineAt!} className="text-display-s font-medium" />
               </p>
               <p className="mt-2 text-sm text-muted">
                 until {request.platformName}’s legal deadline{request.simulated ? " (demo — nothing actually sent)" : ""}. You don’t need to do anything else. We’ll re-check every 3 days.
@@ -193,7 +193,7 @@ function ShareTarget() {
             autoCapitalize="off"
             spellCheck={false}
             placeholder="https://"
-            className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-[16px] focus:border-accent focus:outline-none md:text-[13px]"
+            className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 font-mono text-base focus:border-accent focus:outline-none md:text-caption"
           />
           <button className={`${btnPrimary} h-12 px-4`} aria-label="Add link">
             <Icon name="arrow" size={18} />

@@ -62,7 +62,7 @@ export function DemoPanel() {
   }, [simulate, forward, restart]);
 
   const btn = "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent";
-  const kbd = "ml-auto rounded border border-white/20 px-1.5 font-mono text-[10px] text-panel-muted";
+  const kbd = "ml-auto rounded border border-white/20 px-1.5 font-mono text-micro text-panel-muted";
   return (
     <>
       {busy && (
@@ -77,7 +77,7 @@ export function DemoPanel() {
       {open && (
     <div role="dialog" aria-label="Demo controls" className="fixed bottom-4 right-4 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-panel p-3 text-white shadow-2xl">
       <div className="flex items-center justify-between px-2 pb-2">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-panel-muted">Demo controls</span>
+        <span className="font-mono text-label uppercase tracking-widest text-panel-muted">Demo controls</span>
         <button onClick={() => setOpen(false)} aria-label="Close demo controls" className="rounded p-1 hover:bg-white/10">
           <Icon name="x" size={14} />
         </button>
@@ -102,7 +102,7 @@ export function DemoPanel() {
         <Icon name="plus" size={16} /> Start blank case
       </button>
       <AiIndicator />
-      <p className="break-all px-2 pt-2 text-[11px] leading-relaxed text-panel-muted">
+      <p className="break-all px-2 pt-2 text-label leading-relaxed text-panel-muted">
         Shift+D to hide · Recovery URLs: <span className="font-mono">/demo?preset=fresh|sent|simulated|escalation|fastforward</span>
       </p>
     </div>
@@ -114,17 +114,17 @@ export function DemoPanel() {
 /** Live vs cached Gemini — visible only here, never to judges on the main screen. */
 function AiIndicator() {
   const { events, preferCached } = useAiStatus();
-  const tone = { live: "bg-[#6FC39D]", cached: "bg-[#E7C46F]", template: "bg-panel-muted" } as const;
+  const tone = { live: "bg-panel-removed", cached: "bg-panel-cached", template: "bg-panel-muted" } as const;
   return (
     <div className="mt-2 border-t border-panel-line px-2 pt-2">
       <label className="flex cursor-pointer items-center justify-between gap-2 text-xs">
         <span>Use cached Gemini responses</span>
-        <input type="checkbox" checked={preferCached} onChange={(e) => setPreferCached(e.target.checked)} className="accent-[#3446A8]" />
+        <input type="checkbox" checked={preferCached} onChange={(e) => setPreferCached(e.target.checked)} className="accent-accent" />
       </label>
       <ul className="mt-2 space-y-1">
-        {events.length === 0 && <li className="text-[11px] text-panel-muted">No Gemini calls yet.</li>}
+        {events.length === 0 && <li className="text-label text-panel-muted">No Gemini calls yet.</li>}
         {events.map((e) => (
-          <li key={e.at + e.step} className="flex items-center gap-2 text-[11px]">
+          <li key={e.at + e.step} className="flex items-center gap-2 text-label">
             <span className={`h-1.5 w-1.5 rounded-full ${tone[e.source]}`} />
             <span className="flex-1 truncate">{e.step}</span>
             <span className="font-mono uppercase text-panel-muted">{e.source}</span>

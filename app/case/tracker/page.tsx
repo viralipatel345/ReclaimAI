@@ -41,7 +41,7 @@ function TrackerView({ c, now }: { c: Case; now: number }) {
   return (
     <div>
       <Eyebrow>Step 03</Eyebrow>
-      <h1 className="mt-3 font-display text-[36px] font-semibold leading-[1.05] tracking-tight md:text-[52px]">Every platform is on the clock.</h1>
+      <h1 className="mt-3 font-display text-display-m font-semibold leading-[1.05] tracking-tight md:text-display-xl">Every platform is on the clock.</h1>
       <p className="mt-3 max-w-[62ch] text-muted">Reclaim chases, re-checks every 3 days, and escalates to the FTC.</p>
 
       <ul className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Summary">
@@ -101,7 +101,7 @@ function Stat({ n, label, tone, icon }: { n: number; label: string; tone: "remov
   const color = { removed: "text-removed", ink: "text-ink", overdue: "text-overdue", accent: "text-accent" }[tone];
   return (
     <li className={`${card} px-5 py-4`}>
-      <p key={n} className={`anim-settle tabular flex items-center gap-2 font-display text-[44px] font-semibold leading-none md:text-[52px] ${color}`}>
+      <p key={n} className={`anim-settle tabular flex items-center gap-2 font-display text-display-l font-semibold leading-none md:text-display-xl ${color}`}>
         {n}
         {icon && <Icon name="lock" size={22} className="mt-1" />}
       </p>
@@ -146,9 +146,9 @@ function ClockCard({ r, c, now, index, onReply, onOpenMessage }: { r: TakedownRe
           <div className="min-w-0">
             <h2 className="font-medium">
               {r.platformName}
-              {r.kind === "refile" && <span className="ml-2 rounded-md bg-overdue-soft px-1.5 py-0.5 text-[11px] font-medium text-overdue">Re-upload</span>}
+              {r.kind === "refile" && <span className="ml-2 rounded-md bg-overdue-soft px-1.5 py-0.5 text-label font-medium text-overdue">Re-upload</span>}
             </h2>
-            <p className="truncate font-mono text-[11px] text-muted">{links.map((l) => l.url.replace(/^https?:\/\/(www\.)?/, "")).join(", ")}</p>
+            <p className="truncate font-mono text-label text-muted">{links.map((l) => l.url.replace(/^https?:\/\/(www\.)?/, "")).join(", ")}</p>
           </div>
         </div>
         <StatusPill status={status} />
@@ -159,7 +159,7 @@ function ClockCard({ r, c, now, index, onReply, onOpenMessage }: { r: TakedownRe
         {isRemoved ? (
           <>
             <p className="text-xs uppercase tracking-wider text-removed">Removed in</p>
-            <p className="mt-1 font-display text-[44px] font-semibold leading-none tracking-tight text-removed">
+            <p className="mt-1 font-display text-display-l font-semibold leading-none tracking-tight text-removed">
               {hoursMinutes(new Date(r.removedAt!).getTime() - sent)}
             </p>
             {r.coveredByAct && r.deadlineAt && new Date(r.removedAt!).getTime() > new Date(r.deadlineAt).getTime() && (
@@ -171,20 +171,20 @@ function ClockCard({ r, c, now, index, onReply, onOpenMessage }: { r: TakedownRe
         ) : status === "rejected" ? (
           <>
             <p className="text-xs uppercase tracking-wider text-overdue">Rejected</p>
-            <p className="mt-1 font-display text-[32px] font-semibold leading-tight text-overdue">Escalate to the FTC</p>
+            <p className="mt-1 font-display text-display-s font-semibold leading-tight text-overdue">Escalate to the FTC</p>
           </>
         ) : r.deadlineAt ? (
           <>
             <p className={`text-xs uppercase tracking-wider ${isOverdue ? "text-overdue" : "text-muted"}`}>{isOverdue ? "Past deadline" : "Time left"}</p>
             <Countdown
               deadlineAt={r.deadlineAt}
-              className={`mt-1 block text-[44px] font-medium leading-none tracking-tight ${isOverdue ? "text-overdue" : "text-ink"}`}
+              className={`mt-1 block text-display-l font-medium leading-none tracking-tight ${isOverdue ? "text-overdue" : "text-ink"}`}
             />
           </>
         ) : (
           <>
             <p className="text-xs uppercase tracking-wider text-muted">Not sent yet</p>
-            <p className="mt-1 font-mono text-[44px] font-medium leading-none text-line">48:00:00</p>
+            <p className="mt-1 font-mono text-display-l font-medium leading-none text-line">48:00:00</p>
           </>
         )}
       </div>
@@ -253,7 +253,7 @@ function ClockCard({ r, c, now, index, onReply, onOpenMessage }: { r: TakedownRe
   );
 }
 
-const DOT = { neutral: "bg-panel-muted", accent: "bg-[#8E9BE0]", removed: "bg-[#6FC39D]", overdue: "bg-[#F08A82]" } as const;
+const DOT = { neutral: "bg-panel-muted", accent: "bg-panel-accent", removed: "bg-panel-removed", overdue: "bg-panel-overdue" } as const;
 
 function RecheckStatus({ c }: { c: Case }) {
   const [busy, setBusy] = useState(false);
@@ -292,7 +292,7 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
     <aside className="h-fit space-y-6 rounded-2xl bg-panel p-6 text-white">
       {overdue.length > 0 ? (
         <div>
-          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3A6A0]">
+          <p className="flex items-center gap-2 font-mono text-label uppercase tracking-[0.14em] text-panel-overdue">
             <Icon name="flag" size={14} /> Escalation ready
           </p>
           <p className="mt-3 font-display text-2xl font-semibold leading-snug">
@@ -302,14 +302,14 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
           </p>
           <Link
             href={`/case/ftc?request=${overdue[0].id}`}
-            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-[15px] font-medium text-ink hover:bg-white/90"
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-body font-medium text-ink hover:bg-white/90"
           >
             Review &amp; file complaint <Icon name="arrow" size={16} />
           </Link>
         </div>
       ) : (
         <div>
-          <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-panel-muted">
+          <p className="flex items-center gap-2 font-mono text-label uppercase tracking-[0.14em] text-panel-muted">
             <Icon name="eye" size={14} /> Agent watching
           </p>
           <p className="mt-3 font-display text-2xl font-semibold leading-snug">
@@ -327,7 +327,7 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
               <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${DOT[a.tone]}`} />
               <div className="min-w-0">
                 <p className="text-sm leading-snug">{a.text}</p>
-                <p className="mt-0.5 font-mono text-[11px] text-panel-muted">
+                <p className="mt-0.5 font-mono text-label text-panel-muted">
                   {clockTime(a.at)} · {new Date(a.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </p>
               </div>

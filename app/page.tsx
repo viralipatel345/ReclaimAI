@@ -31,7 +31,7 @@ export default function Landing() {
     <div className="mx-auto grid max-w-[1440px] gap-10 px-4 pb-16 pt-10 md:px-12 md:pt-20 lg:grid-cols-[1fr_440px] lg:gap-20">
       <section>
         <Eyebrow>TAKE IT DOWN Act · enforceable since May 19, 2026</Eyebrow>
-        <h1 className="mt-5 max-w-[14ch] font-display text-[44px] font-semibold leading-[1.02] tracking-tight md:text-[72px]">
+        <h1 className="mt-5 max-w-[14ch] font-display text-display-l font-semibold leading-[1.02] tracking-tight md:text-hero">
           Platforms have 48 hours to take it down.
         </h1>
         <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-muted md:text-xl">
@@ -61,8 +61,8 @@ export default function Landing() {
               key={o.v}
               className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3.5 transition-colors ${age === o.v ? "border-accent bg-accent-soft" : "border-line hover:border-ink/30"}`}
             >
-              <input type="radio" name="age" value={o.v} checked={age === o.v} onChange={() => setAge(o.v)} className="h-4 w-4 accent-[#3446A8]" />
-              <span className="text-[15px]">{o.label}</span>
+              <input type="radio" name="age" value={o.v} checked={age === o.v} onChange={() => setAge(o.v)} className="h-4 w-4 accent-accent" />
+              <span className="text-body">{o.label}</span>
             </label>
           ))}
         </fieldset>

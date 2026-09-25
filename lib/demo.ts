@@ -55,7 +55,7 @@ export function simulatePlatformResponses(c: Case, now: number): Case {
   });
   const sentActs = requests
     .filter((r) => r.sentAt)
-    .map((r) => activity(`Request sent to ${r.platformName}. 48-hour clock started.`, "accent", r.sentAt!));
+    .map((r) => activity(`Request sent to ${r.platformName} (demo). 48-hour clock started.`, "accent", r.sentAt!));
   const all = [...newActs, ...sentActs].sort((a, b) => b.at.localeCompare(a.at));
   const demoPageState = { ...c.demoPageState, [DEMO_URLS.reddit]: "removed" as const };
   const simulated = { ...c, requests, activity: all, evidence: [...c.evidence, ...sentEvidence, ...replyEvidence], outbox: [...(c.outbox ?? []), ...reminders], demoPageState };

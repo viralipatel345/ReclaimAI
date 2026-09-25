@@ -13,7 +13,7 @@ export default function UnderEighteen() {
     <div className="mx-auto max-w-2xl px-4 py-12 md:py-20">
       <div className={`${card} p-6 md:p-10`}>
         <Icon name="heart" size={26} className="text-accent" />
-        <h1 className="mt-5 font-display text-[34px] font-semibold leading-tight md:text-[44px]">There’s a service built just for you.</h1>
+        <h1 className="mt-5 font-display text-display-m font-semibold leading-tight md:text-display-l">There’s a service built just for you.</h1>
         <p className="mt-4 text-lg leading-relaxed text-muted">
           <strong className="text-ink">Take It Down</strong>, from the National Center for Missing &amp; Exploited Children (NCMEC), helps remove nude or sexual images taken of you before you were 18 — without you having to send the images to anyone.
         </p>
