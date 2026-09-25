@@ -462,40 +462,6 @@ function Agents() {
   );
 }
 
-/* ---------- Measure points ---------- */
-
-const METRICS = [
-  { label: 'Time to first request', value: '6 min', note: 'From first message to a removal request ready to approve.' },
-  { label: 'Copies found per case', value: '3', note: 'Every place the Finder located, not only the link you had.' },
-  { label: 'Removed within 48 hours', value: '2 of 3', note: 'Tracked against each platform’s legal deadline.' },
-  { label: 'Hours to removal', value: '19h', note: 'The fastest platform in this case. Misses are escalated.' },
-];
-
-function Measure() {
-  return (
-    <section className="py-16">
-      <div className="mx-auto max-w-[1240px] px-5 md:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-[#E1261C]">What we measure</p>
-            <h2 className={`${display} mt-3 max-w-[18ch] text-4xl leading-[1.02] md:text-6xl`}>Every case, counted in hours.</h2>
-          </div>
-          <span className="rounded-full bg-[#F5F6F8] px-3 py-1 text-xs font-semibold text-[#6B7280]">Example case</span>
-        </div>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {METRICS.map((m, i) => (
-            <motion.div key={m.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.6, ease: EASE }} className="rounded-3xl border border-black/5 p-6">
-              <p className="text-sm font-semibold text-[#6B7280]">{m.label}</p>
-              <p className={`${display} mt-3 text-5xl`}>{m.value}</p>
-              <p className="mt-3 text-sm leading-relaxed text-[#4B5563]">{m.note}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ---------- Stats + closing ---------- */
 
 function Stats() {
@@ -550,7 +516,6 @@ export function Landing({ onQuickExit }: { onQuickExit: () => void }) {
         <HowItSearches />
         <TryIt />
         <Agents />
-        <Measure />
         <Stats />
         <Closing />
       </main>
