@@ -9,7 +9,7 @@ import {
 // Demo content comes from data/demo/reclaim-demo-data.json: real law, stats, platforms; fictional case.
 const CASE = DATA.demoCase;
 const FINDINGS = CASE.findings;
-const REAL_PLATFORMS = DATA.platforms.filter((p) => !p.fictional);
+const REAL_PLATFORMS = DATA.platforms.filter((p) => !p.fictional && p.link);
 const STAT = (v: string) => DATA.stats.find((x) => x.value === v)!;
 const statusTone = (st: string) => st === 'Removed' ? 'bg-[#E7F6EC] text-[#166534]' : st === 'Overdue' ? 'bg-[#0E1116] text-white' : 'bg-[#FDECEA] text-[#B3130F]';
 
@@ -122,9 +122,9 @@ function PhoneChat() {
             )}
           </AnimatePresence>
         </div>
-        <div className="absolute inset-x-3 bottom-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[12px] text-[#9CA3AF] shadow-[0_2px_10px_rgba(0,0,0,0.06)]">
+        <a href="#try" className="absolute inset-x-3 bottom-3 flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[12px] text-[#9CA3AF] shadow-[0_2px_10px_rgba(0,0,0,0.06)] hover:text-[#4B5563]">
           Tell me what happened… <span className="ml-auto grid h-7 w-7 place-items-center rounded-full bg-[#E1261C] text-white"><ArrowRight size={14} /></span>
-        </div>
+        </a>
       </div>
     </div>
   );
@@ -204,7 +204,7 @@ const STEPS = [
   { key: 'track', title: 'Track', text: 'The Watcher agent counts down every 48-hour deadline and escalates misses.' },
 ];
 
-function StepPanel({ k }: { k: string }) {
+function StepPanel({ k, go }: { k: string; go: (n: number) => void }) {
   const row = 'flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]';
   if (k === 'tell') return (
     <div className="space-y-3">
@@ -245,8 +245,8 @@ function StepPanel({ k }: { k: string }) {
         ))}
       </ul>
       <div className="mt-4 flex gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white"><Check size={15} /> Approve and send</span>
-        <span className="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-[#4B5563]">Edit first</span>
+        <button onClick={() => go(4)} className="inline-flex items-center gap-2 rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B3130F]"><Check size={15} /> Approve and send</button>
+        <button onClick={() => go(2)} className="inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold text-[#4B5563] hover:bg-black/[0.04]">Back to the plan</button>
       </div>
     </div>
   );
@@ -281,6 +281,11 @@ function Process() {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
+    const open = (e: Event) => { setI((e as CustomEvent<number>).detail); setPaused(true); };
+    window.addEventListener('reclaim:step', open);
+    return () => window.removeEventListener('reclaim:step', open);
+  }, []);
+  useEffect(() => {
     if (paused) return;
     const t = setTimeout(() => setI((x) => (x + 1) % STEPS.length), 4200);
     return () => clearTimeout(t);
@@ -312,7 +317,7 @@ function Process() {
             <AnimatePresence mode="wait">
               <motion.div key={STEPS[i].key} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.4, ease: EASE }} className="relative">
                 <p className="mb-5 flex items-center gap-2 text-sm font-semibold text-[#4B5563]"><Sparkles size={15} className="text-[#E1261C]" /> Step {i + 1} · {STEPS[i].title}</p>
-                <StepPanel k={STEPS[i].key} />
+                <StepPanel k={STEPS[i].key} go={(n) => { setI(n); setPaused(true); }} />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -426,8 +431,8 @@ function TryIt() {
                 ))}
               </div>
               <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white">Review all {FINDINGS.length}</span>
-                <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold">Call a helpline</span>
+                <a href="#how" onClick={() => window.dispatchEvent(new CustomEvent('reclaim:step', { detail: 3 }))} className="rounded-full bg-[#E1261C] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B3130F]">Review all {FINDINGS.length}</a>
+                <a href="tel:18448782274" className="rounded-full bg-white px-4 py-2 text-sm font-semibold hover:text-[#B3130F]">Call a helpline</a>
                 <button onClick={() => { setPhase('idle'); setText(''); }} className="rounded-full px-4 py-2 text-sm font-semibold text-[#4B5563]">Start over</button>
               </div>
             </motion.div>
@@ -488,12 +493,12 @@ function WhereItGoes() {
         <h2 className={`${display} mt-3 max-w-[20ch] text-4xl leading-[1.02] md:text-6xl`}>Straight to each platform&rsquo;s own removal channel.</h2>
         <div className="mt-8 flex flex-wrap gap-3">
           {REAL_PLATFORMS.map((p, i) => (
-            <motion.a key={p.id} href={p.channel === 'email' ? `mailto:${p.target}` : p.target} target="_blank" rel="noopener noreferrer" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.04 }} className="flex items-center gap-2 rounded-full border border-black/10 px-5 py-3 font-semibold hover:border-[#E1261C] hover:text-[#B3130F]">
-              {p.name}<span className="text-xs font-medium text-[#6B7280]">{p.channel === 'email' ? 'email' : 'form'}</span>
+            <motion.a key={p.id} href={p.link!} target="_blank" rel="noopener noreferrer" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.04 }} className="flex items-center gap-2 rounded-full border border-black/10 px-5 py-3 font-semibold hover:border-[#E1261C] hover:text-[#B3130F]">
+              {p.name}<span className="text-xs font-medium text-[#6B7280]">{p.linkType}</span>
             </motion.a>
           ))}
         </div>
-        <p className="mt-5 text-sm text-[#6B7280]">Every link above was opened and checked on 25 Sep 2026.</p>
+        <p className="mt-5 text-sm text-[#6B7280]">Every link above was checked on 25 Sep 2026. Some platforms send you to a help page first, then the form.</p>
       </div>
     </section>
   );
