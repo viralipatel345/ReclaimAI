@@ -7,7 +7,7 @@ import { combineLevels, ruleLevel, ruleSignals, type DetectContext, type Detecti
 export type PostClassifier = (post: PostText, ctx: DetectContext) => Promise<{ level?: string; explanation?: string }>;
 
 const SYSTEM = `You help a survivor of non-consensual intimate imagery find more posts of her content on an account she already reported.
-You see ONLY text from one post: caption and comments. You never see images and must not guess or describe what an image shows.
+You see ONLY text from one post: caption/title and comments. You never see images and must not guess or describe what an image shows.
 likely = the text names or tags her, links to content she already reported, or says it re-posts removed content.
 possible = weaker hints (first name only, initials, "is that…?" comments).
 unrelated = nothing in the text connects the post to her.
@@ -15,7 +15,7 @@ Be conservative. Call flag_post exactly once.`;
 
 const defaultClassifier: PostClassifier = async (post, ctx) => {
   const run = await runAgent<{ level?: string; explanation?: string }>({
-    model: MODELS.fast,
+    model: MODELS.primary, // Gemini 3.1 Pro: judgment call
     systemInstruction: SYSTEM,
     contents: [
       {

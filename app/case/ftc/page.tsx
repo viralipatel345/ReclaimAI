@@ -65,7 +65,7 @@ function Complaint({ c, r, now }: { c: Case; r: TakedownRequest; now: number }) 
   useEffect(() => {
     if (!draft || draft.aiSource === "gemini" || draft.aiTried || requested.current) return;
     requested.current = true;
-    postJson<{ text: string; source: "gemini" | "cached" | "template" }>("/api/followup", { kind: "ftc", facts: timelineFacts(c, r, now) }, 14000).then((out) => {
+    postJson<{ text: string; source: "gemini" | "cached" | "template" }>("/api/followup", { kind: "ftc", facts: timelineFacts(c, r, now) }, 30000).then((out) => {
       // Server unreachable in demo: the recorded summary; otherwise keep the template text.
       const cached = demo ? cachedFollowUp("ftc", r.platformName) : undefined;
       const text = out?.text || cached || draft.aiText;

@@ -92,7 +92,7 @@ export function addDetectedLinks(c: Case, confirmed: { url: string; caption: str
   const fresh = confirmed.filter((d) => !c.links.some((l) => l.url === d.url));
   if (!fresh.length) return { next: c, requests: [] };
   let next = c;
-  for (const d of fresh) next = addLink(next, d.url, at, undefined, `Instagram post · ${d.caption.slice(0, 60)}`);
+  for (const d of fresh) next = addLink(next, d.url, at, undefined, `Post · ${d.caption.slice(0, 60)}`);
   const newLinks = next.links.slice(-fresh.length);
   const requests = draftRequests({ ...next, links: newLinks }, at);
   next = {

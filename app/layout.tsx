@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Fraunces, Instrument_Sans, JetBrains_Mono } from "next/font/google";
 import { AppHeader, LegalNotice } from "@/components/AppHeader";
 import { Providers } from "@/components/Providers";
-import { isDemoMode } from "@/lib/config";
+import { isDemoMode, publicAppConfig } from "@/lib/config";
 import "./globals.css";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], weight: ["600"], style: ["normal", "italic"] });
@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${fraunces.variable} ${instrument.variable} ${jetbrains.variable} h-full`}>
       <body className="flex min-h-full flex-col">
-        <Providers demoMode={demo}>
+        <Providers demoMode={demo} config={publicAppConfig()}>
           <AppHeader />
           <main className="flex-1">{children}</main>
           <LegalNotice />

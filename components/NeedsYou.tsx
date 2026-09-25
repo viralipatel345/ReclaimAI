@@ -1,5 +1,6 @@
 "use client";
 import { answerUnclear, confirmNameResult, dismissNameResult } from "@/lib/recheckOps";
+import { resolvePendingReply } from "@/lib/gmailOps";
 import { updateCase } from "@/lib/useCase";
 import type { Case } from "@/lib/types";
 import { Icon } from "./Icon";
@@ -9,7 +10,8 @@ import { card } from "./ui";
 export function NeedsYou({ c, demo }: { c: Case; demo: boolean }) {
   const results = c.pendingResults ?? [];
   const unclear = c.links.filter((l) => l.needsUserCheck);
-  if (!results.length && !unclear.length) return null;
+  const replies = c.pendingReplies ?? [];
+  if (!results.length && !unclear.length && !replies.length) return null;
   const now = () => new Date().toISOString();
   const btn = "rounded-lg border px-3 py-1.5 text-sm font-medium";
 
@@ -19,6 +21,29 @@ export function NeedsYou({ c, demo }: { c: Case; demo: boolean }) {
         <Icon name="info" size={16} className="text-accent" /> Needs you
       </h2>
       <ul className="mt-3 divide-y divide-line">
+        {replies.map((p) => {
+          const req = c.requests.find((r) => r.id === p.requestId);
+          return (
+            <li key={p.gmailMessageId} className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm">
+                  Reply from {req?.platformName ?? "a platform"}: <span className="text-muted">{p.summary}</span>
+                </p>
+                {p.asksForImages && (
+                  <p className="mt-1 text-xs font-medium text-overdue">They’re asking for images. Don’t send any — a valid request only needs the links.</p>
+                )}
+                <p className="mt-0.5 text-xs text-muted">Gemini couldn’t tell what they decided. What did they say?</p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {(["acknowledged", "removed", "rejected"] as const).map((st) => (
+                  <button key={st} onClick={() => updateCase((x) => resolvePendingReply(x, p.gmailMessageId, st, now()))} className={`${btn} border-line capitalize hover:border-ink/40`}>
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </li>
+          );
+        })}
         {results.map((r) => (
           <li key={r.url} className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">

@@ -13,6 +13,12 @@ import { prepareSubmission } from "@/lib/submission";
 import { useDemoMode } from "@/components/Providers";
 import { ReplyModal } from "@/components/ReplyModal";
 import { NeedsYou } from "@/components/NeedsYou";
+import { CaseBackup } from "@/components/CaseBackup";
+import { useGmailAgent } from "@/lib/gmailAgent";
+import { postJson } from "@/lib/api";
+import { addNameResults } from "@/lib/recheckOps";
+import { updateCase } from "@/lib/useCase";
+import { GmailConnect } from "@/components/GmailConnect";
 import { recheckNow } from "@/lib/recheckClient";
 import { recheckIntervalDays } from "@/lib/recheckOps";
 import { SubmissionPanel } from "@/components/Submission";
@@ -255,6 +261,73 @@ function ClockCard({ r, c, now, index, onReply, onOpenMessage }: { r: TakedownRe
 
 const DOT = { neutral: "bg-panel-muted", accent: "bg-panel-accent", removed: "bg-panel-removed", overdue: "bg-panel-overdue" } as const;
 
+/** Real mode: Gemini + Google Search for her own name; each result waits in Needs you. */
+function NameSearch({ c }: { c: Case }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  if (!c.legalName) return null;
+  return (
+    <div className="rounded-xl border border-panel-line p-4">
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          const out = await postJson<{ results: { url: string; title: string }[] }>("/api/name-search", { name: c.legalName }, 35000);
+          let added = 0;
+          updateCase((x) => {
+            const r = addNameResults(x, out?.results ?? [], new Date().toISOString());
+            added = r.added;
+            return r.next;
+          });
+          setBusy(false);
+          setNote(!out ? "Couldn’t search right now." : added ? `${added} new result${added === 1 ? "" : "s"} to check in Needs you.` : "No new results for your name.");
+        }}
+        className="flex items-center gap-2 text-sm font-medium text-white hover:underline disabled:opacity-50"
+      >
+        <Icon name="search" size={14} className={busy ? "anim-shimmer" : ""} /> {busy ? "Searching Google with Gemini…" : `Check Google for “${c.legalName}”`}
+      </button>
+      <p className="mt-1 text-xs text-panel-muted">{note ?? "Your own name only. Nothing is filed until you confirm a result."}</p>
+    </div>
+  );
+}
+
+/** Real mode: her Gmail is where requests went out and where replies come back. */
+function InboxStatus() {
+  const { session, checking, lastChecked, checkNow } = useGmailAgent();
+  const [note, setNote] = useState<string | null>(null);
+  if (!session) {
+    return (
+      <div className="rounded-xl border border-panel-line p-4 text-sm">
+        <p className="text-panel-muted">Connect Gmail so Reclaim can read the platforms’ replies and send reminders.</p>
+        <div className="mt-3 [&_button]:bg-white">
+          <GmailConnect compact />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-panel-line p-4">
+      <p className="text-sm">
+        Inbox: <span className="font-medium">{session.email}</span>
+      </p>
+      <p className="mt-1 text-xs text-panel-muted">
+        {checking ? "Reading replies with Gemini…" : lastChecked ? `Checked ${new Date(lastChecked).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} · every minute` : "Checking…"}
+      </p>
+      <button
+        disabled={checking}
+        onClick={async () => {
+          const n = await checkNow();
+          setNote(n ? `${n} new repl${n === 1 ? "y" : "ies"} read.` : "No new replies.");
+        }}
+        className="mt-3 flex items-center gap-2 text-sm font-medium text-white hover:underline disabled:opacity-50"
+      >
+        <Icon name="mail" size={14} /> Check inbox now
+      </button>
+      {note && <p className="mt-1 text-xs text-panel-muted">{note}</p>}
+    </div>
+  );
+}
+
 function RecheckStatus({ c }: { c: Case }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -286,6 +359,7 @@ function RecheckStatus({ c }: { c: Case }) {
 
 function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
   const [showAll, setShowAll] = useState(false);
+  const demoMode = useDemoMode();
   const names = overdue.map((r) => r.platformName).join(" and ");
   const filed = c.requests.filter((r) => r.escalatedAt);
   return (
@@ -318,6 +392,8 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
           <p className="mt-2 text-sm text-panel-muted">You only hear from us when something changes.</p>
         </div>
       )}
+      {!demoMode && <InboxStatus />}
+      {!demoMode && <NameSearch c={c} />}
       <RecheckStatus c={c} />
       <div>
         <h2 className="border-b border-panel-line pb-3 text-sm font-medium">Activity</h2>
@@ -340,6 +416,7 @@ function SidePanel({ c, overdue }: { c: Case; overdue: TakedownRequest[] }) {
           </button>
         )}
       </div>
+      {!demoMode && <CaseBackup c={c} />}
       <button
         onClick={() => downloadEvidencePdf(c)}
         className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/25 text-sm font-medium hover:bg-white/10"

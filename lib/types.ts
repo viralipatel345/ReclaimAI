@@ -91,11 +91,34 @@ export interface TakedownRequest {
   simulated?: boolean;
   /** When the user filed an FTC complaint about this request. */
   escalatedAt?: string;
+  /** Set when the request was sent from the user's Gmail. */
+  gmail?: GmailLink;
   /** Latest platform reply, as classified by parse_reply. */
   reply?: { status: ReplyStatus; summary: string; at: string };
 }
 
 export type ReplyStatus = "acknowledged" | "removed" | "rejected" | "unclear";
+
+export interface GmailLink {
+  threadId: string;
+  messageId: string;
+  /** Message-ID header, so reminders thread under the original. */
+  messageIdHeader: string;
+  to: string;
+  /** True when sent to the team test inbox standing in for the platform. */
+  standIn: boolean;
+  /** Gmail message ids of replies already read. */
+  seen: string[];
+}
+
+/** A reply Gemini couldn't classify (or one that asks for images) — she decides. */
+export interface PendingReply {
+  requestId: string;
+  gmailMessageId: string;
+  summary: string;
+  asksForImages: boolean;
+  at: string;
+}
 
 export type OutboundKind = "reminder" | "ftc_complaint";
 
@@ -118,6 +141,8 @@ export interface OutboundMessage {
   body: string;
   sentAt?: string;
   simulated?: boolean;
+  /** Gmail message id when the reminder was sent from her Gmail. */
+  gmailId?: string;
 }
 
 export type EvidenceEvent = "logged" | "sent" | "recheck" | "reply" | "refiled";
@@ -175,6 +200,7 @@ export interface Case {
   /** Start of the current streak of re-checks with every link removed. 30 days → weekly. */
   cleanSince?: string;
   pendingResults?: NameResult[];
+  pendingReplies?: PendingReply[];
   dismissedResults?: string[];
   /** Demo mode only: which fixture version each URL serves, and name-search fixture results. */
   demoPageState?: Record<string, PageStatus>;
