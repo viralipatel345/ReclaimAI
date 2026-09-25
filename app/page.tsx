@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
 import { btnPrimary, card, Eyebrow } from "@/components/ui";
 import { localMirror } from "@/lib/store";
+import { ensureCase } from "@/lib/useCase";
 
 const PROMISES: { icon: IconName; title: string; text: string }[] = [
   { icon: "link", title: "Links only", text: "We never see, upload or download images." },
@@ -21,6 +22,7 @@ export default function Landing() {
       router.push("/help/under-18");
       return;
     }
+    ensureCase();
     router.push("/case");
   };
 

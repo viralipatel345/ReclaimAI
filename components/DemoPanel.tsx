@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { simulatePlatformResponses } from "@/lib/caseOps";
-import { resetDemo, updateCase } from "@/lib/useCase";
+import { resetDemo, startBlankCase, updateCase } from "@/lib/useCase";
 import { Icon } from "./Icon";
 
 function isTyping(el: EventTarget | null) {
@@ -45,6 +45,15 @@ export function DemoPanel() {
       </button>
       <button className={btn} disabled title="Wired up in step 6">
         <Icon name="refresh" size={16} /> Fast-forward 3 days
+      </button>
+      <button
+        className={btn}
+        onClick={() => {
+          startBlankCase();
+          router.push("/case");
+        }}
+      >
+        <Icon name="plus" size={16} /> Start blank case (live intake)
       </button>
       <button
         className={btn}
