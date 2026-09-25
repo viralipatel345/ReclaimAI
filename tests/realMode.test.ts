@@ -64,7 +64,7 @@ describe("where requests go", () => {
     expect(rcpt).toEqual({ to: "team@gmail.com", standIn: true });
     const email = requestEmail(reddit, "me@gmail.com", rcpt);
     expect(email.subject).toMatch(/^\[Reclaim test → Reddit\]/);
-    expect(email.body).toMatch(/^This test inbox stands in for Reddit/);
+    expect(email.body).toMatch(/^This inbox stands in for Reddit/);
     expect(email.body).toContain(reddit.body);
   });
 

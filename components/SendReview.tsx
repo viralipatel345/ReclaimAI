@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { markSent } from "@/lib/caseOps";
-import { prepareSubmission } from "@/lib/submission";
+import { prepareSubmission, standInSubmission } from "@/lib/submission";
 import { updateCase } from "@/lib/useCase";
 import { useGmail } from "@/lib/google";
 import { sendViaGmail } from "@/lib/gmailAgent";
@@ -21,7 +21,8 @@ export function SendReview({ c, queue, demo, onDone }: { c: Case; queue: Takedow
   const gmail = useGmail();
   const { testPlatformInbox } = useAppConfig();
   const r = queue[i];
-  const rcpt = r ? recipientFor(r, testPlatformInbox) : null;
+  const { sendToSelf } = useAppConfig();
+  const rcpt = r ? recipientFor(r, testPlatformInbox, sendToSelf ? c.contactEmail : "") : null;
   const next = (didSend: boolean) => {
     const total = sent + (didSend ? 1 : 0);
     setSent(total);
@@ -43,7 +44,7 @@ export function SendReview({ c, queue, demo, onDone }: { c: Case; queue: Takedow
               onClick={async () => {
                 setBusy(true);
                 setError(null);
-                const out = await sendViaGmail([r], testPlatformInbox);
+                const out = await sendViaGmail([r], testPlatformInbox || (sendToSelf ? c.contactEmail : ""));
                 setBusy(false);
                 if (out.sent.length) next(true);
                 else setError("Gmail couldn’t send this one. Try again, or send it yourself.");
@@ -76,7 +77,7 @@ export function SendReview({ c, queue, demo, onDone }: { c: Case; queue: Takedow
       {gmail && rcpt?.standIn && (
         <p className="mb-3 rounded-xl bg-accent-soft p-3 text-xs text-accent">Sends from {gmail.email} to {rcpt.to}, the test inbox standing in for {r.platformName}.</p>
       )}
-      <SubmissionPanel s={prepareSubmission(c, r)} />
+      <SubmissionPanel s={rcpt?.standIn && !demo ? standInSubmission(r, rcpt, c.contactEmail) : prepareSubmission(c, r)} />
       {!demo && <p className="mt-4 text-xs text-muted">The 48-hour clock starts when you confirm it’s sent.</p>}
     </Modal>
   );

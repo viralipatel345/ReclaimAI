@@ -34,7 +34,7 @@ function RequestsView({ c }: { c: Case }) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const gmail = useGmail();
-  const { testPlatformInbox } = useAppConfig();
+  const { testPlatformInbox, sendToSelf } = useAppConfig();
   const pending = c.requests.filter((r) => r.status === "ready");
   const n = pending.length;
   const writing = c.requests.filter((r) => r.openingSource === "pending");
@@ -46,7 +46,7 @@ function RequestsView({ c }: { c: Case }) {
     if (gmail) {
       setSending(true);
       setSendError(null);
-      const out = await sendViaGmail(pending, testPlatformInbox);
+      const out = await sendViaGmail(pending, testPlatformInbox || (sendToSelf ? c.contactEmail : ""));
       setSending(false);
       if (out.failed.length) setSendError(`${out.failed.length} couldn’t be sent from Gmail. Try again, or send them yourself.`);
       const manual = pending.filter((r) => out.notEmailable.includes(r.id) || out.failed.includes(r.id));
@@ -101,8 +101,8 @@ function RequestsView({ c }: { c: Case }) {
                   : "You’ll send each one yourself."}
             {demo ? (
               <span className="font-medium text-ink">Demo: nothing is actually sent.</span>
-            ) : gmail && testPlatformInbox ? (
-              <span className="font-medium text-ink">Real Gmail, sent to the test inbox standing in for each platform.</span>
+            ) : testPlatformInbox || sendToSelf ? (
+              <span className="font-medium text-ink">Real emails, addressed to {testPlatformInbox || "you"} as a stand-in for each platform.</span>
             ) : null}
           </p>
           {!gmail && !demo && <GmailConnect compact />}

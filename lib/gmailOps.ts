@@ -10,9 +10,13 @@ export interface Recipient {
   standIn: boolean;
 }
 
-/** Where a request's email goes: the test inbox when configured, else the platform's email channel. Forms can't be emailed. */
-export function recipientFor(r: TakedownRequest, testInbox: string): Recipient | null {
+/**
+ * Where a request's email goes: the team test inbox if configured, else her own address when
+ * sending to self (stand-in), else the platform's email channel. Web forms can't be emailed.
+ */
+export function recipientFor(r: TakedownRequest, testInbox: string, selfEmail = ""): Recipient | null {
   if (testInbox) return { to: testInbox, standIn: true };
+  if (selfEmail) return { to: selfEmail, standIn: true };
   if (r.channel === "email" && r.target) return { to: r.target, standIn: false };
   return null;
 }
@@ -23,7 +27,7 @@ export function requestEmail(r: TakedownRequest, from: string, rcpt: Recipient):
     from,
     to: rcpt.to,
     subject: `[Reclaim test → ${r.platformName}] ${r.subject}`,
-    body: `This test inbox stands in for ${r.platformName} (${r.target ?? "web form"}). Reply here the way the platform would.\n\n${r.body}`,
+    body: `This inbox stands in for ${r.platformName} (${r.target ?? "web form"}). Reply the way the platform would, then paste the reply into Reclaim.\n\n${r.body}`,
   };
 }
 

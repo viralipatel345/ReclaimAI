@@ -31,9 +31,17 @@ export function SubmissionPanel({ s }: { s: Submission }) {
   if (s.channel === "email") {
     return (
       <div className="space-y-3">
+        {s.standInFor && (
+          <p className="rounded-xl bg-accent-soft p-3 text-xs text-accent">
+            Addressed to {s.to}, standing in for {s.standInFor}. A real email — send it, then tap “I’ve sent it”.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
-          <a href={s.mailto} className={`${btnSecondary} border-accent text-accent`}>
-            <Icon name="mail" size={15} /> Open in email app
+          <a href={s.compose} target="_blank" rel="noopener noreferrer" className={`${btnSecondary} border-accent bg-accent text-white hover:bg-accent-hover`}>
+            <Icon name="mail" size={15} /> Open in Gmail
+          </a>
+          <a href={s.mailto} className={btnSecondary}>
+            <Icon name="mail" size={15} /> Other email app
           </a>
           <CopyButton value={`To: ${s.to}\nSubject: ${s.subject}\n\n${s.body}`} label="Copy email" />
         </div>
