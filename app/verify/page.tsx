@@ -27,6 +27,11 @@ export default function VerifyPage() {
   const [live, setLive] = useState(false);
   const [artifact, setArtifact] = useState<ReportArtifact | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const alertRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (error) alertRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [error]);
 
   const refreshRows = useCallback(() => incidentApi.status().then((r) => setRows(r.cases)).catch(() => {}), []);
 
@@ -83,7 +88,7 @@ export default function VerifyPage() {
       </ol>
 
       {error && (
-        <p role="alert" className="mt-5 flex items-center gap-2 rounded-xl bg-overdue-soft px-4 py-3 text-sm text-overdue">
+        <p ref={alertRef} role="alert" className="mt-5 flex items-center gap-2 rounded-xl bg-overdue-soft px-4 py-3 text-sm text-overdue">
           <Icon name="alert" size={16} /> {error}
         </p>
       )}
@@ -772,9 +777,18 @@ function HarnessCard({ c, busy, run, demo }: { c: CaseReport | null; busy: strin
               </select>
             </label>
             <label className="block text-xs font-medium text-muted">
-              Type your name to authorize <span className="font-normal">(as you signed the report{c?.reporter ? `: ${c.reporter.signature}` : ""})</span>
+              {c?.reporter ? (
+                <>
+                  Type <span className="font-display text-sm italic text-ink">{c.reporter.signature}</span> to authorize
+                </>
+              ) : (
+                "Type your name to authorize"
+              )}
               <input value={signature} onChange={(e) => setSignature(e.target.value)} disabled={!ready} placeholder={c?.reporter?.signature ?? "Your name"} className={`${input} mt-1 font-display text-sm italic`} />
             </label>
+            {c?.reporter && signature.trim() && signature.trim().toLowerCase() !== c.reporter.signature.trim().toLowerCase() && signature.trim().toLowerCase() !== c.reporter.legalName.trim().toLowerCase() && (
+              <p className="mt-1 text-xs text-overdue sm:col-span-2">Must match the name on the report: “{c.reporter.signature}”.</p>
+            )}
           </div>
           <p className="mt-3 text-xs leading-relaxed text-muted">{MANDATE_TEXT}</p>
           <button

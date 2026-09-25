@@ -37,7 +37,10 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 export function grantMandate(c: CaseReport, input: { allowedActions?: MandateAction[]; cadenceHours?: number; maxNoticesPerRun?: number; signature: string }, at: string): CaseReport {
   if (c.status === "SEALED") throw new HarnessError("This record is sealed. Start a new draft to authorize the agent.", 409);
   if (!c.reporter?.signature) throw new HarnessError("Add your name, contact email and signature to the report first.");
-  if (norm(input.signature) !== norm(c.reporter.signature)) throw new HarnessError("Type your name exactly as you signed the report to authorize the agent.", 403);
+  const typed = norm(input.signature);
+  if (typed !== norm(c.reporter.signature) && typed !== norm(c.reporter.legalName)) {
+    throw new HarnessError(`To authorize the agent, type your name as it appears on the report: “${c.reporter.signature}”.`, 403);
+  }
   const allowed = (input.allowedActions ?? [...DEFAULT_MANDATE.allowedActions]).filter((a) => MANDATE_ACTIONS.some((m) => m.id === a));
   if (allowed.length === 0) throw new HarnessError("Allow at least one action, or the agent has nothing to do.");
   const cadenceHours = CADENCE_OPTIONS.some((o) => o.hours === input.cadenceHours) ? input.cadenceHours! : 24;
