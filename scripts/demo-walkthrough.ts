@@ -31,6 +31,9 @@ function recorder(page: Page, dir: string, log: RunLog) {
     if (m.type() === "error" || /hydrat/i.test(m.text())) log.consoleErrors.push(`[${m.type()}] ${m.text().slice(0, 300)}`);
   });
   page.on("pageerror", (e) => log.consoleErrors.push(`[pageerror] ${e.message.slice(0, 300)}`));
+  page.on("response", (r) => {
+    if (r.status() >= 400) log.consoleErrors.push(`[http ${r.status()}] ${r.url().replace(BASE, "")}`);
+  });
   return {
     shot: async (label: string, fullPage = true) => {
       const file = `${dir}/${String(++n).padStart(2, "0")}-${label}.png`;
@@ -58,6 +61,7 @@ async function mainFlow(browser: Browser, vp: Viewport): Promise<RunLog> {
   const page = await ctx.newPage();
   const log: RunLog = { viewport: vp.name, actions: [], waits: [], consoleErrors: [], shots: [] };
   const { shot, act, wait } = recorder(page, dir, log);
+  const legacy = process.argv[2] === "before";
 
   await page.goto(`${BASE}/`);
   await page.evaluate(() => localStorage.clear());
@@ -65,17 +69,24 @@ async function mainFlow(browser: Browser, vp: Viewport): Promise<RunLog> {
   await pause(600);
   await shot("landing");
 
-  await act("select 18 or older", () => page.getByText("18 or older").click());
-  await act("click Start", () => page.getByRole("button", { name: /Start/ }).click());
-  await wait("landing → case", () => page.waitForURL("**/case"));
-  await pause(700);
-  await shot("case");
-
-  await act("click Draft my requests", () => page.getByRole("button", { name: /Draft my requests/ }).click());
+  if (legacy) {
+    await act("select 18 or older", () => page.getByText("18 or older").click());
+    await act("click Start", () => page.getByRole("button", { name: /^Start/ }).click());
+    await wait("landing → case", () => page.waitForURL("**/case"));
+    await pause(700);
+    await shot("case");
+    await act("click Draft my requests", () => page.getByRole("button", { name: /Draft my requests/ }).click());
+  } else {
+    await act("click Start demo", () => page.getByRole("button", { name: /Start demo/ }).click());
+    await wait("landing → case", () => page.waitForURL(/\/case/));
+    await pause(900);
+    await shot("case-autodraft", false);
+  }
+  await wait("draft → requests page", () => page.waitForURL("**/case/requests", { timeout: 60000 }));
   await pause(250);
-  await shot("case-drafting", false);
-  await wait("draft (Gemini greetings)", () => page.waitForURL("**/case/requests", { timeout: 60000 }));
-  await pause(600);
+  await shot("requests-drafting", false);
+  await wait("greetings written", () => page.getByRole("heading", { name: /ready to send/ }).waitFor({ timeout: 60000 }));
+  await pause(1500);
   await shot("requests");
 
   await act("click Live detection", () => page.getByRole("link", { name: /Live detection/ }).click());
@@ -84,17 +95,22 @@ async function mainFlow(browser: Browser, vp: Viewport): Promise<RunLog> {
   await shot("detect-start", false);
   await pause(4000);
   await shot("detect-scanning", false);
-  await wait("detection scan", () => page.getByText(/posts? to review/).waitFor({ timeout: 90000 }));
-  await pause(400);
-  await shot("detect-done");
+  await wait("detection scan", () => page.getByText(/Review each post|posts? to review/).waitFor({ timeout: 90000 }));
+  await pause(500);
+  await shot("detect-done", false);
+  await shot("detect-done-full");
 
-  await act("click Yes to all likely", () => page.getByRole("button", { name: /Yes to all/ }).click());
-  await shot("detect-confirmed", false);
-  await act("click Add to my requests", () => page.getByRole("button", { name: /Add \d+ to my requests/ }).click());
-  await pause(200);
-  await shot("detect-adding", false);
+  if (legacy) {
+    await act("click Yes to all likely", () => page.getByRole("button", { name: /Yes to all/ }).click());
+    await act("click Add to my requests", () => page.getByRole("button", { name: /Add \d+ to my requests/ }).click());
+  } else {
+    await act("click Add likely matches", () => page.getByRole("button", { name: /Add \d+ .*matches to my requests/ }).click());
+  }
   await wait("add detected → requests", () => page.waitForURL("**/case/requests", { timeout: 60000 }));
-  await pause(800);
+  await pause(300);
+  await shot("requests-instagram-drafting", false);
+  await wait("instagram greeting written", () => page.getByRole("heading", { name: /ready to send/ }).waitFor({ timeout: 60000 }));
+  await pause(1200);
   await shot("requests-with-instagram");
 
   await act("click Send all", () => page.getByRole("button", { name: /Send all|Review & send/ }).click());
@@ -102,10 +118,12 @@ async function mainFlow(browser: Browser, vp: Viewport): Promise<RunLog> {
   await pause(1500);
   await shot("tracker-sent");
 
-  await act("Shift+D", () => page.keyboard.press("Shift+D"));
-  await pause(200);
-  await shot("demo-panel", false);
-  await act("click Simulate platform responses", () => page.getByRole("button", { name: /Simulate platform responses/ }).click());
+  if (legacy) {
+    await act("Shift+D", () => page.keyboard.press("Shift+D"));
+    await act("click Simulate platform responses", () => page.getByRole("button", { name: /Simulate platform responses/ }).click());
+  } else {
+    await act("press 1 (simulate)", () => page.keyboard.press("1"));
+  }
   await pause(1200);
   await shot("tracker-simulated");
 
@@ -116,18 +134,23 @@ async function mainFlow(browser: Browser, vp: Viewport): Promise<RunLog> {
   await wait("FTC summary (Gemini)", () => page.getByText(/Summary drafted by Gemini|Summary from the template/).waitFor({ timeout: 60000 }));
   await shot("ftc");
 
-  await act("go back to tracker", () => page.goto(`${BASE}/case/tracker`));
-  await pause(800);
-  await act("Shift+D", () => page.keyboard.press("Shift+D"));
-  await act("click Fast-forward 3 days", () => page.getByRole("button", { name: /Fast-forward 3 days/ }).click());
-  await pause(300);
+  if (legacy) {
+    await act("go back to tracker", () => page.goto(`${BASE}/case/tracker`));
+    await pause(800);
+    await act("Shift+D", () => page.keyboard.press("Shift+D"));
+    await act("click Fast-forward 3 days", () => page.getByRole("button", { name: /Fast-forward 3 days/ }).click());
+  } else {
+    await act("press 2 (fast-forward)", () => page.keyboard.press("2"));
+  }
+  await pause(500);
   await shot("fastforward-busy", false);
   await wait("fast-forward re-check", () => page.getByRole("heading", { name: "Needs you" }).waitFor({ timeout: 60000 }));
-  await page.keyboard.press("Shift+D"); // close panel for a clean shot
-  await pause(800);
+  if (legacy) await page.keyboard.press("Shift+D");
+  await pause(1200);
   await shot("tracker-fastforward");
 
-  await act("share a link (phone)", () => page.goto(`${BASE}/share?title=post&text=${encodeURIComponent("look at this https://x.com/someone/status/1850000000000000000")}`));
+  log.actions.push("(phone) share a link");
+  await page.goto(`${BASE}/share?title=post&text=${encodeURIComponent("look at this https://x.com/someone/status/1850000000000000000")}`);
   await pause(1500);
   await shot("share");
 
@@ -140,7 +163,7 @@ async function underEighteen(browser: Browser) {
   const page = await ctx.newPage();
   await page.goto(`${BASE}/`);
   await page.getByText("Under 18").click();
-  await page.getByRole("button", { name: /Start/ }).click();
+  await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.waitForURL("**/help/under-18");
   await pause(500);
   await page.screenshot({ path: `${OUT}/probe-under-18.png`, fullPage: true });
@@ -223,7 +246,7 @@ async function doubleClicks(browser: Browser) {
   await browser.close();
   const summary = runs.map((r) => ({
     viewport: r.viewport,
-    actionCount: r.actions.length,
+    actionCount: r.actions.filter((a) => !a.startsWith("(phone)")).length,
     actions: r.actions,
     longestWait: r.waits.reduce((a, w) => (w.ms > a.ms ? w : a), { step: "", ms: 0 }),
     waits: r.waits,

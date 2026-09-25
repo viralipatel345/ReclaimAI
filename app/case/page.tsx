@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
@@ -10,8 +10,6 @@ import { nameSearchUrl, normalizeUrl } from "@/lib/platforms";
 import { ATTESTATION_TEXT } from "@/lib/templates";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useResolveLinks } from "@/lib/useResolve";
-import type { OpeningTarget } from "@/lib/draft";
-import { fetchOpenings } from "@/lib/openingsClient";
 import { useDemoMode } from "@/components/Providers";
 import type { Case } from "@/lib/types";
 
@@ -55,23 +53,29 @@ function CaseForm({ c }: { c: Case }) {
     setLinkInput("");
   };
 
-  const onDraft = async () => {
-    const at = new Date().toISOString();
-    const signed: Case = { ...c, attestation: { text: ATTESTATION_TEXT, signature: signature.trim(), signedAt: at } };
-    const targets: OpeningTarget[] = draftRequests(signed, at).map((r) => ({
-      platformId: r.platformId,
-      platformName: r.platformName,
-      kind: r.kind,
-    }));
+  // Drafting is instant: requests are rendered from the fixed template now, and the
+  // Requests page streams Gemini's greetings into them as they arrive.
+  const onDraft = () => {
+    if (drafting) return;
     setDrafting(true);
-    const { openings } = await fetchOpenings(targets, demo);
+    const at = new Date().toISOString();
     updateCase((x) => {
-      const next = { ...x, attestation: signed.attestation };
-      const requests = draftRequests(next, at, openings).map((r) => ({ ...r, openingSource: openings[r.platformId] ? ("gemini" as const) : ("template" as const) }));
-      return { ...next, requests };
+      const next = { ...x, attestation: { text: ATTESTATION_TEXT, signature: signature.trim(), signedAt: at } };
+      return { ...next, requests: draftRequests(next, at).map((r) => ({ ...r, openingSource: "pending" as const })) };
     });
     router.push("/case/requests");
   };
+
+  // Demo: arriving from "Start demo" drafts automatically after a short, visible beat.
+  const [autoDraft, setAutoDraft] = useState(false);
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!demo || autoStarted.current || new URLSearchParams(window.location.search).get("auto") !== "1") return;
+    autoStarted.current = true;
+    window.history.replaceState(null, "", "/case");
+    const show = setTimeout(() => setAutoDraft(true), 0);
+    return () => clearTimeout(show);
+  }, [demo]);
 
   return (
     <div>
@@ -200,8 +204,18 @@ function CaseForm({ c }: { c: Case }) {
             text="You’ll see every request and tap send yourself."
           />
           <div className="mt-auto pt-5">
-            <button onClick={onDraft} disabled={!canDraft} className={`${btnPrimary} w-full`}>
-              {drafting ? "Drafting with Gemini…" : "Draft my requests"} <Icon name={drafting ? "sparkle" : "arrow"} size={18} className={drafting ? "animate-pulse" : ""} />
+            <button onClick={onDraft} disabled={!canDraft} className={`${btnPrimary} relative w-full overflow-hidden`}>
+              {autoDraft && canDraft && (
+                <span
+                  aria-hidden="true"
+                  className="anim-fill absolute inset-0 bg-accent-hover"
+                  style={{ ["--fill-ms" as string]: "2200ms" }}
+                  onAnimationEnd={onDraft}
+                />
+              )}
+              <span className="relative flex items-center gap-2">
+                {autoDraft && canDraft ? "Drafting your requests…" : "Draft my requests"} <Icon name="arrow" size={18} />
+              </span>
             </button>
             {!canDraft && !drafting && (
               <p className="mt-2 text-center text-xs text-muted">

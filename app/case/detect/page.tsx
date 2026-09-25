@@ -8,13 +8,11 @@ import { useRouter } from "next/navigation";
 import { SANDBOX_ACCOUNT, type SandboxPost } from "@/data/sandbox";
 import { Icon } from "@/components/Icon";
 import { useDemoMode } from "@/components/Providers";
-import { btnPrimary, btnSecondary, card, Eyebrow, Loading } from "@/components/ui";
-import { withOpening } from "@/lib/caseOps";
+import { btnPrimary, card, Eyebrow, Loading } from "@/components/ui";
 import { addDetectedLinks, detectContext, ruleLevel, ruleSignals, type Detection, type MatchLevel } from "@/lib/detect";
 import { postJson } from "@/lib/api";
 import { cachedDetection } from "@/lib/demoCache";
 import { recordAi } from "@/lib/aiStatus";
-import { fetchOpenings } from "@/lib/openingsClient";
 import { updateCase, useCase } from "@/lib/useCase";
 import type { Case } from "@/lib/types";
 
@@ -129,25 +127,22 @@ function Detector({ c }: { c: Case }) {
     .filter((x) => x.d && x.d.level !== "unrelated")
     .sort((a, b) => (a.d!.level === b.d!.level ? 0 : a.d!.level === "likely" ? -1 : 1));
   const confirmed = flagged.filter((x) => verdicts[x.p.id] === "yes");
-  const likelyIds = flagged.filter((x) => x.d!.level === "likely").map((x) => x.p.id);
 
-  const addToRequests = async () => {
+  /** Confirm `picks` (she chose them) and draft them as one request; Gemini's greeting streams in on Requests. */
+  const addToRequests = (picks: SandboxPost[]) => {
+    if (adding || !picks.length) return;
     setAdding(true);
     const at = new Date().toISOString();
-    let drafted: { id: string; platformId: string; platformName: string; kind: "takedown" }[] = [];
     updateCase((x) => {
-      const { next, requests } = addDetectedLinks(x, confirmed.map(({ p }) => ({ url: p.url, caption: p.caption })), at);
-      drafted = requests.map((r) => ({ id: r.id, platformId: r.platformId, platformName: r.platformName, kind: "takedown" as const }));
-      return next;
+      const { next, requests } = addDetectedLinks(x, picks.map((p) => ({ url: p.url, caption: p.caption })), at);
+      const ids = new Set(requests.map((r) => r.id));
+      return { ...next, requests: next.requests.map((r) => (ids.has(r.id) ? { ...r, openingSource: "pending" as const } : r)) };
     });
-    // Gemini writes the greeting, same as every other request.
-    const { openings } = await fetchOpenings(drafted, true);
-    updateCase((x) => ({
-      ...x,
-      requests: x.requests.map((r) => (drafted.some((d) => d.id === r.id) && openings[r.platformId] ? { ...withOpening(x, r, openings[r.platformId]), openingSource: "gemini" as const } : r)),
-    }));
     router.push("/case/requests");
   };
+  const likelyPosts = flagged.filter((x) => x.d!.level === "likely").map((x) => x.p);
+  const extraConfirmed = confirmed.filter((x) => x.d!.level !== "likely").map((x) => x.p);
+  const counts = { likely: likelyPosts.length, possible: flagged.length - likelyPosts.length, none: Object.values(results).filter((d) => d.level === "unrelated").length };
 
   return (
     <div>
@@ -164,6 +159,27 @@ function Detector({ c }: { c: Case }) {
         <SandboxProfile cursor={cursor} results={results} verdicts={verdicts} />
 
         <div className="space-y-6">
+          {phase === "done" && (
+            <section className={`${card} anim-rise p-5`} aria-labelledby="result-title">
+              <h2 id="result-title" className="sr-only">Scan results</h2>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { n: counts.likely, label: "likely", cls: "text-overdue" },
+                  { n: counts.possible, label: "possible", cls: "text-accent" },
+                  { n: counts.none, label: "no match", cls: "text-muted" },
+                ].map((x) => (
+                  <div key={x.label}>
+                    <p className={`font-display text-[44px] font-semibold leading-none ${x.cls}`}>{x.n}</p>
+                    <p className="mt-1 text-sm text-muted">{x.label}</p>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => addToRequests([...likelyPosts, ...extraConfirmed])} disabled={!likelyPosts.length || adding} className={`${btnPrimary} mt-5 w-full`}>
+                <Icon name="plus" size={17} /> {adding ? "Adding…" : `Add ${likelyPosts.length + extraConfirmed.length} ${extraConfirmed.length ? "" : "likely "}matches to my requests`}
+              </button>
+              <p className="mt-2 text-center text-xs text-muted">Only posts you add are filed. Review the {counts.possible} possible below.</p>
+            </section>
+          )}
           <section className="rounded-2xl bg-panel p-5 text-white" aria-label="Agent log">
             <header className="flex items-center justify-between">
               <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-panel-muted">
@@ -176,7 +192,7 @@ function Detector({ c }: { c: Case }) {
                 </button>
               )}
             </header>
-            <ol ref={logRef} className="mt-4 h-[380px] space-y-1.5 overflow-y-auto font-mono text-[12.5px] leading-relaxed" aria-live="polite">
+            <ol ref={logRef} className={`mt-4 space-y-1.5 ${phase === "done" ? "h-[180px]" : "h-[380px]"} overflow-y-auto font-mono text-[12.5px] leading-relaxed`} aria-live="polite">
               {log.map((l, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="w-12 shrink-0 text-right text-panel-muted tabular">{l.t.toFixed(1)}s</span>
@@ -196,13 +212,8 @@ function Detector({ c }: { c: Case }) {
             <section className={`${card} p-5`} aria-labelledby="matches">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 id="matches" className="font-display text-xl font-semibold">
-                  {flagged.length} post{flagged.length === 1 ? "" : "s"} to review
+                  Review each post
                 </h2>
-                {likelyIds.length > 0 && (
-                  <button onClick={() => setVerdicts((v) => ({ ...v, ...Object.fromEntries(likelyIds.map((id) => [id, "yes" as const])) }))} className={btnSecondary}>
-                    <Icon name="check" size={15} /> Yes to all {likelyIds.length} likely
-                  </button>
-                )}
               </div>
               <ul className="mt-4 divide-y divide-line">
                 {flagged.map(({ p, d }) => (
@@ -238,7 +249,7 @@ function Detector({ c }: { c: Case }) {
               </ul>
               <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-muted">Confirmed posts become one Instagram request. You’ll review it before anything is sent.</p>
-                <button onClick={addToRequests} disabled={!confirmed.length || adding} className={`${btnPrimary} shrink-0 whitespace-nowrap`}>
+                <button onClick={() => addToRequests(confirmed.map((x) => x.p))} disabled={!confirmed.length || adding} className={`${btnPrimary} shrink-0 whitespace-nowrap`}>
                   <Icon name="plus" size={17} /> {adding ? "Drafting…" : confirmed.length ? `Add ${confirmed.length} to my requests` : "Add to my requests"}
                 </button>
               </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EvidencePanel } from "@/components/EvidencePanel";
@@ -11,6 +11,8 @@ import { displayStatus, markSent, withOpening } from "@/lib/caseOps";
 import { updateCase, useCase } from "@/lib/useCase";
 import { useNow } from "@/lib/useNow";
 import { SECTION } from "@/lib/templates";
+import { fetchOpenings } from "@/lib/openingsClient";
+import { Typewriter } from "@/components/Typewriter";
 import type { Case, TakedownRequest } from "@/lib/types";
 
 export default function Requests() {
@@ -29,6 +31,8 @@ function RequestsView({ c }: { c: Case }) {
   const [sending, setSending] = useState(false);
   const pending = c.requests.filter((r) => r.status === "ready");
   const n = pending.length;
+  const writing = c.requests.filter((r) => r.openingSource === "pending");
+  useDraftGreetings(c, demo);
 
   const sendAll = async () => {
     if (c.reviewEachBeforeSending || !c.autoSendConsent) return setReviewQueue(pending);
@@ -47,10 +51,10 @@ function RequestsView({ c }: { c: Case }) {
     <div>
       <Eyebrow>Step 02</Eyebrow>
       <h1 className="mt-3 font-display text-[36px] font-semibold leading-tight tracking-tight md:text-[44px]">
-        {n > 0 ? `${n} request${n === 1 ? "" : "s"} ready to send` : "All requests sent"}
+        {writing.length > 0 ? `Drafting ${c.requests.length} requests…` : n > 0 ? `${n} request${n === 1 ? "" : "s"} ready to send` : "All requests sent"}
       </h1>
       <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <p className="max-w-[62ch] text-muted">Each request uses a fixed legal template with your signature. Only the greeting is written by AI.</p>
+        <p className="max-w-[62ch] text-muted">Fixed legal template, your signature. Gemini writes only the greeting.</p>
         {demo && (
           <Link href="/case/detect" className={`${btnSecondary} shrink-0 border-accent text-accent`}>
             <Icon name="search" size={15} /> Live detection
@@ -60,8 +64,10 @@ function RequestsView({ c }: { c: Case }) {
 
       <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid grid-cols-1 content-start gap-5 md:grid-cols-2">
-          {c.requests.map((r) => (
-            <RequestCard key={r.id} r={r} onRead={() => setReading(r)} onEdit={() => setEditing(r)} />
+          {c.requests.map((r, i) => (
+            <div key={r.id} className="anim-rise flex md:[&:last-child:nth-child(odd)]:col-span-2" style={{ animationDelay: `${i * 90}ms` }}>
+              <RequestCard r={r} onRead={() => setReading(r)} onEdit={() => setEditing(r)} />
+            </div>
           ))}
         </div>
         <div className="space-y-5">
@@ -69,14 +75,20 @@ function RequestsView({ c }: { c: Case }) {
         </div>
       </div>
 
-      <div className="sticky bottom-0 z-30 -mx-4 mt-8 border-t border-line bg-ground/95 px-4 py-4 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+      <div className="sticky bottom-0 z-30 -mx-4 mt-8 border-t border-line bg-ground/95 px-4 py-4 backdrop-blur md:mx-0 md:rounded-t-2xl md:px-5">
         <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
           <p className="flex items-center gap-2 text-sm text-muted">
             <Icon name={c.reviewEachBeforeSending ? "eye" : "send"} size={16} />
-            {c.reviewEachBeforeSending ? "Review mode is on — you’ll confirm each one." : c.autoSendConsent ? "Auto-send is on. Reclaim will chase every platform for you." : "You’ll send each one yourself."}
+            {writing.length > 0
+              ? "Gemini is writing the greetings…"
+              : c.reviewEachBeforeSending
+                ? "Review mode: you’ll confirm each one."
+                : c.autoSendConsent
+                  ? "Auto-send is on."
+                  : "You’ll send each one yourself."}
             {demo && <span className="font-medium text-ink">Demo: nothing is actually sent.</span>}
           </p>
-          <button onClick={sendAll} disabled={n === 0 || sending} className={`${btnPrimary} md:min-w-[260px]`}>
+          <button onClick={sendAll} disabled={n === 0 || sending || writing.length > 0} className={`${btnPrimary} md:min-w-[260px]`}>
             <Icon name="send" size={17} /> {c.reviewEachBeforeSending || !c.autoSendConsent ? `Review & send ${n}` : `Send all ${n}`} request{n === 1 ? "" : "s"}
           </button>
         </div>
@@ -109,12 +121,41 @@ function RequestsView({ c }: { c: Case }) {
   );
 }
 
+/** Requests whose greeting was pending when this page first saw them get typed out. */
+const typedThisSession = new Set<string>();
+
+/** Fetch Gemini greetings for requests still marked pending (cache fallback in demo). */
+function useDraftGreetings(c: Case, demo: boolean) {
+  const inflight = useRef(false);
+  useEffect(() => {
+    const pending = c.requests.filter((r) => r.openingSource === "pending");
+    if (!pending.length || inflight.current) return;
+    inflight.current = true;
+    pending.forEach((r) => typedThisSession.add(r.id));
+    fetchOpenings(
+      pending.map((r) => ({ platformId: r.platformId, platformName: r.platformName, kind: r.kind })),
+      demo,
+    ).then(({ openings, source }) => {
+      inflight.current = false;
+      updateCase((x) => ({
+        ...x,
+        requests: x.requests.map((r) => {
+          if (r.openingSource !== "pending") return r;
+          const text = openings[r.platformId];
+          return text ? { ...withOpening(x, r, text), openingSource: source === "template" ? ("template" as const) : ("gemini" as const) } : { ...r, openingSource: "template" as const };
+        }),
+      }));
+    });
+  }, [c.requests, demo]);
+}
+
 function RequestCard({ r, onRead, onEdit }: { r: TakedownRequest; onRead: () => void; onEdit: () => void }) {
   const status = displayStatus(r, useNow());
   const lines = r.body.split("\n");
-  const excerpt = `${r.opening}\n\n${lines[lines.indexOf(SECTION.identification) + 1] ?? ""}`;
+  const firstLine = lines[lines.indexOf(SECTION.identification) + 1] ?? "";
+  const pending = r.openingSource === "pending";
   return (
-    <article className={`${card} flex flex-col p-5`}>
+    <article className={`${card} flex w-full flex-col p-5`}>
       <header className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <PlatformMark name={r.platformName} />
@@ -123,15 +164,36 @@ function RequestCard({ r, onRead, onEdit }: { r: TakedownRequest; onRead: () => 
             <ChannelTag channel={r.channel} />
           </div>
         </div>
-        <StatusPill status={status} />
+        {pending ? (
+          <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
+            <Icon name="sparkle" size={12} className="anim-shimmer" /> Drafting
+          </span>
+        ) : (
+          <span key={status} className="anim-flip">
+            <StatusPill status={status} />
+          </span>
+        )}
       </header>
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="min-w-0 truncate font-mono text-xs text-muted">{r.target ?? "Couldn't confirm — use the site's contact page"}</p>
         <span className="shrink-0 rounded-md border border-line px-2 py-0.5 text-[11px] text-muted">{r.coveredByAct ? "TAKE IT DOWN Act · 48h" : "Google policy"}</span>
       </div>
-      <blockquote className="mt-3 line-clamp-5 flex-1 whitespace-pre-line rounded-xl bg-ground px-4 py-3 text-sm leading-relaxed text-ink/85">{excerpt}</blockquote>
+      <div className="mt-3 flex-1 rounded-xl bg-ground px-4 py-3">
+        {pending ? (
+          <div className="space-y-2 py-1" aria-label="Gemini is writing the greeting">
+            <div className="anim-shimmer h-3 w-2/5 rounded bg-line" />
+            <div className="anim-shimmer h-3 w-full rounded bg-line" />
+            <div className="anim-shimmer h-3 w-4/5 rounded bg-line" />
+          </div>
+        ) : (
+          <p className="line-clamp-4 whitespace-pre-line text-sm leading-relaxed text-ink/85">
+            <Typewriter text={r.opening} animate={typedThisSession.has(r.id) && r.openingSource === "gemini"} />
+          </p>
+        )}
+        <p className="mt-2 line-clamp-1 text-xs text-muted">{firstLine}</p>
+      </div>
       <footer className="mt-3 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1 text-[11px] text-muted">
+        <span className="flex items-center gap-1 whitespace-nowrap text-[11px] text-muted">
           {r.openingSource === "gemini" && (
             <>
               <Icon name="sparkle" size={12} /> Greeting by Gemini
@@ -140,9 +202,9 @@ function RequestCard({ r, onRead, onEdit }: { r: TakedownRequest; onRead: () => 
         </span>
         <div className="flex gap-1 whitespace-nowrap">
           <button onClick={onRead} className={btnGhost}>
-            <Icon name="eye" size={15} /> Read full request
+            <Icon name="eye" size={15} /> Read
           </button>
-          <button onClick={onEdit} className={btnGhost} disabled={status !== "ready" && status !== "draft"}>
+          <button onClick={onEdit} className={btnGhost} disabled={pending || (status !== "ready" && status !== "draft")}>
             <Icon name="pen" size={15} /> Edit
           </button>
         </div>
