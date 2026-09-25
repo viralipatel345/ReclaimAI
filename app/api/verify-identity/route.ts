@@ -51,7 +51,26 @@ function checkFraudSignals(entities: { type: string; mentionText: string }[]): s
     .map((e) => e.type.replace("fraud_signals_", "").replace(/_/g, " "));
 }
 
+// The onboarding site (landing-aistudio) is served from a different origin and calls this
+// route directly, so it needs CORS. No cookies or credentials are involved.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 export async function POST(req: NextRequest) {
+  const res = await handle(req);
+  for (const [k, v] of Object.entries(CORS)) res.headers.set(k, v);
+  return res;
+}
+
+async function handle(req: NextRequest): Promise<Response> {
   try {
     const form = await req.formData();
     const file = form.get("file") as File | null;
@@ -81,7 +100,19 @@ export async function POST(req: NextRequest) {
 
     if (!docAiRes.ok) {
       const err = await docAiRes.text();
-      return Response.json({ error: `Document AI error: ${err}` }, { status: 502 });
+      if (docAiRes.status === 403) {
+        // The credentials this server runs with can't use the processor (e.g. a laptop signed in
+        // to a different Google account than the processor's project).
+        console.warn("[verify-identity] Document AI 403 for processor project", PROCESSOR_PROJECT);
+        return Response.json(
+          {
+            error:
+              "The ID check isn't available from this server (its Google account can't use the ID processor). Use the deployed app, or set DOCAI_PROCESSOR_ENDPOINT to a processor your account can access.",
+          },
+          { status: 502 },
+        );
+      }
+      return Response.json({ error: `Document AI error (${docAiRes.status}): ${err.slice(0, 300)}` }, { status: 502 });
     }
 
     const data      = await docAiRes.json();
